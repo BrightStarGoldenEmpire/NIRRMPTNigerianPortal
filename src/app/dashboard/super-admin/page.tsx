@@ -8,31 +8,23 @@ import {
   Users, 
   Building2, 
   Briefcase, 
-  Database, 
   Activity, 
-  Lock, 
   RefreshCw, 
   CheckCircle2, 
-  AlertTriangle, 
   Search, 
   UserPlus, 
   X, 
   LogOut, 
   User, 
-  Server, 
-  HardDrive, 
-  Cpu, 
-  CheckCircle,
-  XCircle,
-  Filter,
-  Trash2,
-  KeyRound,
-  MessageSquare,
-  Send,
+  Terminal, 
+  MapPin, 
+  FileText, 
+  PlusCircle, 
   Circle,
-  Sliders,
-  Terminal,
-  Settings
+  Eye,
+  Layers,
+  Database,
+  ArrowRight
 } from 'lucide-react';
 
 interface ManagedUser {
@@ -44,12 +36,14 @@ interface ManagedUser {
   last_login?: string;
 }
 
-interface ActivityLog {
+interface OperationalRecord {
   id: string;
-  timestamp: string;
-  type: 'AUTH' | 'DB' | 'RBAC' | 'SYS';
-  message: string;
-  status: 'success' | 'warning' | 'error';
+  ref_id: string;
+  task_title: string;
+  category: string;
+  status: 'Under Review' | 'Approved' | 'Flagged' | 'Completed';
+  date: string;
+  description?: string;
 }
 
 const DEPARTMENTS = [
@@ -69,27 +63,34 @@ export default function SuperAdminDashboard() {
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [activeRole, setActiveRole] = useState<'public' | 'staff' | 'directorate' | 'superadmin'>('superadmin');
-  const [activeTab, setActiveTab] = useState<'overview' | 'rbac' | 'logs' | 'settings'>('overview');
+  const [activeSubTab, setActiveSubTab] = useState<'overview' | 'workflows' | 'gis' | 'audit' | 'iam'>('overview');
   const [profile, setProfile] = useState<{ id?: string; email: string; role: string } | null>(null);
 
   // Dynamic Data Stores
   const [userList, setUserList] = useState<ManagedUser[]>([]);
-  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
-  const [systemUptime, setSystemUptime] = useState<string>('99.99%');
-  const [dbStorageUsed, setDbStorageUsed] = useState<string>('12.4 GB');
-  const [activeSessionsCount, setActiveSessionsCount] = useState<number>(1420);
+  const [operationalRecords, setOperationalRecords] = useState<OperationalRecord[]>([
+    { id: '1', ref_id: '#NIR-8092', task_title: 'Environmental Assessment Field Review', category: 'Soil & Water', status: 'Under Review', date: 'Sept 17, 2026', description: 'Comprehensive audit of watershed preservation zones in the Niger Delta basin.' },
+    { id: '2', ref_id: '#NIR-7411', task_title: 'Renewable Energy Clearance Directive', category: 'Forestry Conservation', status: 'Approved', date: 'Sept 10, 2026', description: 'National park green-energy expansion framework clearance certificate.' },
+    { id: '3', ref_id: '#NIR-6520', task_title: 'Hydrological Basin Telemetry Audit', category: 'Hydrology', status: 'Completed', date: 'Aug 28, 2026', description: 'Real-time telemetry validation across all northern and southern river sensors.' },
+  ]);
 
-  // UI Interactivity & Filtering
+  // UI Interactivity, Modals & Drill-downs
   const [userSearchQuery, setUserSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [isProvisionModalOpen, setIsProvisionModalOpen] = useState(false);
+  const [isNewEntryModalOpen, setIsNewEntryModalOpen] = useState(false);
+  const [selectedDrillItem, setSelectedDrillItem] = useState<any | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
 
-  // Provisioning Form
+  // Form Fields for Provisioning Modal (Attachment 1)
   const [newEmail, setNewEmail] = useState('');
   const [newRole, setNewRole] = useState<'citizen' | 'staff' | 'directorate' | 'superadmin'>('staff');
   const [newDepartment, setNewDepartment] = useState(DEPARTMENTS[0]);
+
+  // Form Fields for New Entry
+  const [newEntryTitle, setNewEntryTitle] = useState('');
+  const [newEntryCategory, setNewEntryCategory] = useState('Soil & Water');
+  const [newEntryDesc, setNewEntryDesc] = useState('');
 
   // Handle Multi-Tier Role Navigation
   const handleRoleNavigation = (role: 'public' | 'staff' | 'directorate' | 'superadmin') => {
@@ -97,7 +98,7 @@ export default function SuperAdminDashboard() {
     if (role === 'public') router.push('/dashboard/citizen');
     if (role === 'staff') router.push('/dashboard/staff');
     if (role === 'directorate') router.push('/dashboard/admin');
-    if (role === 'superadmin') router.push('/dashboard/superadmin');
+    if (role === 'superadmin') router.push('/dashboard/super-admin');
   };
 
   // Synchronize System Governance Data
@@ -105,7 +106,7 @@ export default function SuperAdminDashboard() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
 
-      let adminEmail = 'dg.superadmin@nirrmpt.gov.ng';
+      let adminEmail = 'brightstargoldenempire@gmail.com';
       let adminId = '';
 
       if (session?.user) {
@@ -123,7 +124,6 @@ export default function SuperAdminDashboard() {
         role: 'superadmin'
       });
 
-      // Attempt DB synchronization for users/profiles
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('*')
@@ -134,30 +134,18 @@ export default function SuperAdminDashboard() {
           id: p.id || Math.random().toString(),
           email: p.email || 'user@nirrmpt.gov.ng',
           role: p.role || 'staff',
-          department: p.department || 'General Operations',
+          department: p.department || DEPARTMENTS[0],
           status: p.status || 'active',
           last_login: p.updated_at ? new Date(p.updated_at).toLocaleTimeString() : 'Recently'
         })));
       } else {
-        // Fallback default operational state
         setUserList([
-          { id: 'usr-1', email: 'director.general@nirrmpt.gov.ng', role: 'superadmin', department: 'Directorate Operations & Governance', status: 'active', last_login: 'Just now' },
-          { id: 'usr-2', email: 'field.lead@nirrmpt.gov.ng', role: 'staff', department: 'Environmental Protection & Monitoring', status: 'active', last_login: '10m ago' },
-          { id: 'usr-3', email: 'gis.operator@nirrmpt.gov.ng', role: 'directorate', department: 'GIS & Remote Sensing Division', status: 'active', last_login: '25m ago' },
-          { id: 'usr-4', email: 'partner.auditor@external.org', role: 'citizen', department: 'Public & Partner Hub', status: 'pending', last_login: '1h ago' },
-          { id: 'usr-5', email: 'hydro.officer@nirrmpt.gov.ng', role: 'staff', department: 'Hydrological & Water Resources', status: 'active', last_login: '3h ago' },
+          { id: 'usr-1', email: 'brightstargoldenempire@gmail.com', role: 'superadmin', department: DEPARTMENTS[0], status: 'active', last_login: 'Just now' },
+          { id: 'usr-2', email: 'field.lead@nirrmpt.gov.ng', role: 'staff', department: DEPARTMENTS[1], status: 'active', last_login: '10m ago' },
+          { id: 'usr-3', email: 'gis.operator@nirrmpt.gov.ng', role: 'directorate', department: DEPARTMENTS[2], status: 'active', last_login: '25m ago' },
+          { id: 'usr-4', email: 'partner.auditor@external.org', role: 'citizen', department: DEPARTMENTS[0], status: 'pending', last_login: '1h ago' },
         ]);
       }
-
-      // Populate Live System Activity Logs
-      setActivityLogs([
-        { id: 'log-1', timestamp: new Date().toLocaleTimeString(), type: 'AUTH', message: `Super Admin session verified for ${adminEmail}`, status: 'success' },
-        { id: 'log-2', timestamp: '10:42:15 AM', type: 'RBAC', message: 'Updated access control rules for Staff Field Desk', status: 'success' },
-        { id: 'log-3', timestamp: '10:30:00 AM', type: 'DB', message: 'Database RLS policies auto-validated without errors', status: 'success' },
-        { id: 'log-4', timestamp: '09:15:22 AM', type: 'SYS', message: 'Automated database snapshot completed (12.4 GB)', status: 'success' },
-        { id: 'log-5', timestamp: '08:00:01 AM', type: 'SYS', message: 'System boot and firewall telemetry guard verified', status: 'success' }
-      ]);
-
     } catch (err: any) {
       console.warn('Governance sync warning:', err.message);
     } finally {
@@ -192,7 +180,6 @@ export default function SuperAdminDashboard() {
     if (!newEmail.trim()) return;
 
     try {
-      // Post to Supabase DB
       await supabase.from('profiles').insert([
         {
           email: newEmail,
@@ -203,7 +190,7 @@ export default function SuperAdminDashboard() {
         }
       ]);
     } catch {
-      console.log('User staged locally in fallback mode');
+      console.log('User staged locally');
     } finally {
       const newUser: ManagedUser = {
         id: `usr-${Date.now()}`,
@@ -215,16 +202,33 @@ export default function SuperAdminDashboard() {
       };
 
       setUserList(prev => [newUser, ...prev]);
-      setActivityLogs(prev => [
-        { id: `log-${Date.now()}`, timestamp: new Date().toLocaleTimeString(), type: 'RBAC', message: `Provisioned account ${newEmail} as [${newRole.toUpperCase()}]`, status: 'success' },
-        ...prev
-      ]);
-
-      setActionSuccess(`Successfully provisioned account for ${newEmail}`);
+      setActionSuccess(`Successfully provisioned institutional account for ${newEmail} under ${newDepartment}`);
       setNewEmail('');
       setIsProvisionModalOpen(false);
       setTimeout(() => setActionSuccess(null), 5000);
     }
+  };
+
+  const handleCreateEntry = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newEntryTitle.trim()) return;
+
+    const newRecord: OperationalRecord = {
+      id: `${Date.now()}`,
+      ref_id: `#NIR-${Math.floor(1000 + Math.random() * 9000)}`,
+      task_title: newEntryTitle,
+      category: newEntryCategory,
+      status: 'Under Review',
+      date: 'Today',
+      description: newEntryDesc || 'Newly submitted operational filing awaiting Directorate verification.'
+    };
+
+    setOperationalRecords(prev => [newRecord, ...prev]);
+    setActionSuccess(`Created operational filing: ${newEntryTitle}`);
+    setNewEntryTitle('');
+    setNewEntryDesc('');
+    setIsNewEntryModalOpen(false);
+    setTimeout(() => setActionSuccess(null), 5000);
   };
 
   const handleUserRoleChange = async (userId: string, targetRole: 'citizen' | 'staff' | 'directorate' | 'superadmin') => {
@@ -234,7 +238,7 @@ export default function SuperAdminDashboard() {
       console.log('Role updated locally');
     } finally {
       setUserList(prev => prev.map(u => u.id === userId ? { ...u, role: targetRole } : u));
-      setActionSuccess(`User role updated to ${targetRole.toUpperCase()}`);
+      setActionSuccess(`User system access tier updated to ${targetRole.toUpperCase()}`);
       setTimeout(() => setActionSuccess(null), 4000);
     }
   };
@@ -242,7 +246,6 @@ export default function SuperAdminDashboard() {
   const handleUserStatusToggle = async (userId: string) => {
     const targetUser = userList.find(u => u.id === userId);
     if (!targetUser) return;
-
     const newStatus = targetUser.status === 'active' ? 'suspended' : 'active';
 
     try {
@@ -251,7 +254,7 @@ export default function SuperAdminDashboard() {
       console.log('Status updated locally');
     } finally {
       setUserList(prev => prev.map(u => u.id === userId ? { ...u, status: newStatus } : u));
-      setActionSuccess(`Account ${targetUser.email} status changed to ${newStatus.toUpperCase()}`);
+      setActionSuccess(`Account status updated to ${newStatus.toUpperCase()}`);
       setTimeout(() => setActionSuccess(null), 4000);
     }
   };
@@ -267,7 +270,7 @@ export default function SuperAdminDashboard() {
     return (
       <div style={{ minHeight: "100vh", backgroundColor: "#020617", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "12px", color: "#10b981" }}>
         <div style={{ width: "32px", height: "32px", border: "3px solid #10b981", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 1s linear infinite" }} />
-        <span style={{ fontSize: "12px", fontWeight: "600", letterSpacing: "1px", textTransform: "uppercase" }}>Loading Executive Telemetry & Governance Core...</span>
+        <span style={{ fontSize: "12px", fontWeight: "600", letterSpacing: "1px", textTransform: "uppercase" }}>Loading Super Admin Command Center...</span>
       </div>
     );
   }
@@ -279,38 +282,42 @@ export default function SuperAdminDashboard() {
       <div style={{ padding: "8px 24px", backgroundColor: "#00111a", borderBottom: "1px solid #1e293b", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "11px", color: "#94a3b8" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
           <Circle size={8} style={{ color: "#10b981", fill: "#10b981" }} />
-          <span>Tier-1 Executive Command Authority • Director-General Core</span>
+          <span>Official Federal Portal • Republic of Nigeria</span>
         </div>
         <div>
-          <span>+2348025252362</span> | <span>Abuja & Port Harcourt Operational Hubs</span>
+          <span>+2348025252362</span> | <span>Port Harcourt, Rivers State</span>
         </div>
       </div>
 
-      {/* Main Header Bar */}
+      {/* Main Header */}
       <div style={{ padding: "16px 24px", backgroundColor: "#020617", borderBottom: "1px solid #1e293b", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "16px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
           <div style={{ width: "42px", height: "42px", borderRadius: "8px", backgroundColor: "rgba(16, 185, 129, 0.15)", border: "1px solid #10b981", display: "flex", alignItems: "center", justifyContent: "center", color: "#34d399", fontWeight: "bold" }}>
             <ShieldCheck size={24} />
           </div>
           <div>
-            <h1 style={{ fontSize: "18px", fontWeight: "900", color: "#ffffff", margin: 0, letterSpacing: "0.5px" }}>NIRRMPT Super Admin Core</h1>
-            <p style={{ fontSize: "10px", color: "#64748b", margin: 0, letterSpacing: "0.5px" }}>EXECUTIVE GOVERNANCE & RBAC CONTROL TIER</p>
+            <h1 style={{ fontSize: "18px", fontWeight: "900", color: "#ffffff", margin: 0, letterSpacing: "0.5px" }}>NIRRMPT Nigeria</h1>
+            <p style={{ fontSize: "10px", color: "#64748b", margin: 0, letterSpacing: "0.5px" }}>REGENERATIVE RESOURCE MANAGEMENT & PROTECTION</p>
           </div>
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: "16px", flexWrap: "wrap" }}>
           <button onClick={() => router.push('/')} style={{ background: "none", border: "none", color: "#cbd5e1", fontSize: "12px", cursor: "pointer" }}>Home</button>
           <button onClick={() => router.push('/about')} style={{ background: "none", border: "none", color: "#cbd5e1", fontSize: "12px", cursor: "pointer" }}>About Us</button>
-          <button onClick={() => router.push('/leadership')} style={{ background: "none", border: "none", color: "#cbd5e1", fontSize: "12px", cursor: "pointer" }}>Board Directives</button>
+          <button onClick={() => router.push('/leadership')} style={{ background: "none", border: "none", color: "#cbd5e1", fontSize: "12px", cursor: "pointer" }}>Leadership & Board</button>
           <button onClick={() => router.push('/departments')} style={{ background: "none", border: "none", color: "#cbd5e1", fontSize: "12px", cursor: "pointer" }}>Departments</button>
           
-          <button 
-            onClick={handleSignOut}
-            style={{ padding: "8px 16px", backgroundColor: "rgba(239, 68, 68, 0.1)", border: "1px solid rgba(239, 68, 68, 0.4)", borderRadius: "8px", color: "#f87171", fontSize: "12px", fontWeight: "600", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}
-          >
-            <LogOut size={14} />
-            <span>Sign Out</span>
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "6px 12px", backgroundColor: "#0f172a", borderRadius: "8px", border: "1px solid #1e293b" }}>
+            <User size={14} style={{ color: "#34d399" }} />
+            <span style={{ fontSize: "11px", color: "#cbd5e1" }}>{profile?.email}</span>
+            <button 
+              onClick={handleSignOut}
+              style={{ background: "none", border: "none", color: "#f87171", cursor: "pointer", display: "flex", alignItems: "center", gap: "4px", marginLeft: "8px", fontSize: "11px", fontWeight: "bold" }}
+            >
+              <LogOut size={12} />
+              <span>Terminate Session</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -320,7 +327,7 @@ export default function SuperAdminDashboard() {
         {/* Sidebar Role Switcher Navigation */}
         <div style={{ width: "240px", backgroundColor: "#020617", borderRight: "1px solid #1e293b", padding: "20px 12px", display: "flex", flexDirection: "column", gap: "8px" }}>
           <span style={{ fontSize: "10px", fontWeight: "bold", color: "#64748b", textTransform: "uppercase", letterSpacing: "1px", padding: "0 8px 8px 8px" }}>
-            Portal Tiers
+            Command Desk
           </span>
 
           <button
@@ -354,40 +361,43 @@ export default function SuperAdminDashboard() {
             <ShieldCheck size={16} />
             <span>Super Admin Core</span>
           </button>
+
+          <div style={{ marginTop: "auto", padding: "12px", backgroundColor: "#0f172a", borderRadius: "8px", border: "1px solid #1e293b" }}>
+            <span style={{ fontSize: "9px", color: "#64748b", textTransform: "uppercase", display: "block", marginBottom: "4px" }}>AUTHENTICATED IDENTITY</span>
+            <span style={{ fontSize: "10px", color: "#34d399", wordBreak: "break-all", display: "block" }}>{profile?.email}</span>
+          </div>
         </div>
 
-        {/* Executive Workspace Workspace Area */}
+        {/* Content Area */}
         <div style={{ flex: 1, padding: "24px", overflowY: "auto" }}>
           
-          {/* Sub-Header Banner */}
-          <div style={{ padding: "16px 20px", backgroundColor: "#0f172a", border: "1px solid #10b981", borderRadius: "12px", marginBottom: "20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-              <div style={{ padding: "8px", backgroundColor: "rgba(16, 185, 129, 0.15)", borderRadius: "8px", color: "#34d399" }}>
-                <ShieldCheck size={20} />
+          {/* Top Banner Card */}
+          <div style={{ padding: "20px 24px", backgroundColor: "#0f172a", border: "1px solid #1e293b", borderRadius: "12px", marginBottom: "20px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "16px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+              <div style={{ padding: "10px", backgroundColor: "rgba(239, 68, 68, 0.15)", border: "1px solid rgba(239, 68, 68, 0.4)", borderRadius: "8px", color: "#f87171" }}>
+                <ShieldCheck size={24} />
               </div>
               <div>
-                <span style={{ fontSize: "10px", color: "#34d399", fontWeight: "bold", letterSpacing: "1px", textTransform: "uppercase" }}>EXECUTIVE GOVERNANCE</span>
-                <h2 style={{ fontSize: "16px", fontWeight: "800", color: "#ffffff", margin: 0 }}>System Governance Command</h2>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <h2 style={{ fontSize: "18px", fontWeight: "900", color: "#ffffff", margin: 0 }}>Super Admin Command Center</h2>
+                  <span style={{ fontSize: "9px", padding: "2px 8px", backgroundColor: "rgba(239, 68, 68, 0.2)", border: "1px solid rgba(239, 68, 68, 0.4)", borderRadius: "6px", color: "#f87171", fontWeight: "bold" }}>ROOT PRIVILEGES</span>
+                </div>
+                <p style={{ fontSize: "11px", color: "#94a3b8", margin: "4px 0 0 0" }}>NIRRMPT System Security, Audit Logs & High-Level Telemetry Controls</p>
               </div>
             </div>
 
             <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-              <span style={{ fontSize: "11px", color: "#94a3b8" }}>
-                Authenticated Officer: <strong style={{ color: "#ffffff" }}>{profile?.email}</strong>
-              </span>
-
-              <button
+              <button 
                 onClick={handleRefresh}
-                disabled={refreshing}
-                style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 14px", backgroundColor: "#1e293b", border: "1px solid #334155", borderRadius: "8px", color: "#f8fafc", fontSize: "12px", cursor: "pointer" }}
+                style={{ padding: "8px 14px", backgroundColor: "#1e293b", border: "1px solid #334155", borderRadius: "8px", color: "#f8fafc", fontSize: "12px", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}
               >
                 <RefreshCw size={14} style={{ color: "#34d399" }} />
-                <span>{refreshing ? "Syncing..." : "Refresh Status"}</span>
+                <span>{refreshing ? "Syncing..." : "Refresh Telemetry"}</span>
               </button>
             </div>
           </div>
 
-          {/* Toast Notification Banner */}
+          {/* Success Banner */}
           {actionSuccess && (
             <div style={{ padding: "12px 16px", backgroundColor: "rgba(6, 78, 59, 0.9)", border: "1px solid #10b981", borderRadius: "10px", display: "flex", alignItems: "center", gap: "10px", color: "#34d399", fontSize: "12px", marginBottom: "20px" }}>
               <CheckCircle2 size={16} />
@@ -395,101 +405,143 @@ export default function SuperAdminDashboard() {
             </div>
           )}
 
-          {/* Tab Selection */}
-          <div style={{ display: "flex", gap: "12px", marginBottom: "20px", borderBottom: "1px solid #1e293b", paddingBottom: "12px" }}>
+          {/* Sub-Navigation Tabs */}
+          <div style={{ display: "flex", gap: "12px", marginBottom: "20px", borderBottom: "1px solid #1e293b", paddingBottom: "12px", flexWrap: "wrap" }}>
             <button
-              onClick={() => setActiveTab('overview')}
-              style={{ padding: "8px 16px", borderRadius: "6px", border: "none", backgroundColor: activeTab === 'overview' ? "#1e293b" : "transparent", color: activeTab === 'overview' ? "#34d399" : "#94a3b8", fontSize: "12px", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}
+              onClick={() => setActiveSubTab('overview')}
+              style={{ padding: "8px 16px", borderRadius: "6px", border: "none", backgroundColor: activeSubTab === 'overview' ? "#1e293b" : "transparent", color: activeSubTab === 'overview' ? "#34d399" : "#94a3b8", fontSize: "12px", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}
             >
               <Activity size={14} />
-              <span>System Telemetry</span>
+              <span>Command Overview</span>
             </button>
 
             <button
-              onClick={() => setActiveTab('rbac')}
-              style={{ padding: "8px 16px", borderRadius: "6px", border: "none", backgroundColor: activeTab === 'rbac' ? "#1e293b" : "transparent", color: activeTab === 'rbac' ? "#34d399" : "#94a3b8", fontSize: "12px", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}
+              onClick={() => setActiveSubTab('workflows')}
+              style={{ padding: "8px 16px", borderRadius: "6px", border: "none", backgroundColor: activeSubTab === 'workflows' ? "#1e293b" : "transparent", color: activeSubTab === 'workflows' ? "#34d399" : "#94a3b8", fontSize: "12px", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}
             >
-              <Users size={14} />
-              <span>User Provisioning & RBAC</span>
+              <FileText size={14} />
+              <span>Operational Workflows</span>
             </button>
 
             <button
-              onClick={() => setActiveTab('logs')}
-              style={{ padding: "8px 16px", borderRadius: "6px", border: "none", backgroundColor: activeTab === 'logs' ? "#1e293b" : "transparent", color: activeTab === 'logs' ? "#34d399" : "#94a3b8", fontSize: "12px", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}
+              onClick={() => setActiveSubTab('gis')}
+              style={{ padding: "8px 16px", borderRadius: "6px", border: "none", backgroundColor: activeSubTab === 'gis' ? "#1e293b" : "transparent", color: activeSubTab === 'gis' ? "#34d399" : "#94a3b8", fontSize: "12px", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}
+            >
+              <MapPin size={14} />
+              <span>GIS Resource Map</span>
+            </button>
+
+            <button
+              onClick={() => setActiveSubTab('audit')}
+              style={{ padding: "8px 16px", borderRadius: "6px", border: "none", backgroundColor: activeSubTab === 'audit' ? "#1e293b" : "transparent", color: activeSubTab === 'audit' ? "#34d399" : "#94a3b8", fontSize: "12px", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}
             >
               <Terminal size={14} />
-              <span>Audit Logs</span>
+              <span>System Control & Audit</span>
+            </button>
+
+            <button
+              onClick={() => setActiveSubTab('iam')}
+              style={{ padding: "8px 16px", borderRadius: "6px", border: "none", backgroundColor: activeSubTab === 'iam' ? "#1e293b" : "transparent", color: activeSubTab === 'iam' ? "#34d399" : "#94a3b8", fontSize: "12px", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}
+            >
+              <Users size={14} />
+              <span>User Provisioning & IAM</span>
             </button>
           </div>
 
-          {/* Overview Tab Content */}
-          {activeTab === 'overview' && (
-            <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+          {/* TAB 1: COMMAND OVERVIEW (Attachment 5) */}
+          {activeSubTab === 'overview' && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
               
-              {/* Executive Metrics Grid */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "16px" }}>
-                <div style={{ padding: "20px", backgroundColor: "#0f172a", border: "1px solid rgba(16, 185, 129, 0.3)", borderRadius: "12px", display: "flex", flexDirection: "column", gap: "8px" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: "10px", color: "#94a3b8", fontWeight: "bold", textTransform: "uppercase" }}>System Uptime</span>
-                    <Server size={18} style={{ color: "#34d399" }} />
-                  </div>
-                  <span style={{ fontSize: "24px", fontWeight: "900", color: "#ffffff" }}>{systemUptime}</span>
-                  <span style={{ fontSize: "11px", color: "#34d399" }}>Zero Active Outages</span>
+              <div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+                  <h3 style={{ fontSize: "14px", fontWeight: "bold", color: "#ffffff", margin: 0, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                    Active Metrics & Real-time Telemetry (Clickable Cards)
+                  </h3>
+                  <span style={{ fontSize: "11px", color: "#94a3b8" }}>Filter Range: Last 30 Days</span>
                 </div>
 
-                <div style={{ padding: "20px", backgroundColor: "#0f172a", border: "1px solid rgba(59, 130, 246, 0.3)", borderRadius: "12px", display: "flex", flexDirection: "column", gap: "8px" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: "10px", color: "#94a3b8", fontWeight: "bold", textTransform: "uppercase" }}>Active User Sessions</span>
-                    <Users size={18} style={{ color: "#60a5fa" }} />
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "16px" }}>
+                  
+                  <div 
+                    onClick={() => setSelectedDrillItem({ title: 'Active Permits Detail', type: 'metric', value: '128 Pending Review', details: 'Detailed breakdown of all active environmental permits undergoing cross-agency review in 36 states.' })}
+                    style={{ padding: "20px", backgroundColor: "#0f172a", border: "1px solid #1e293b", borderRadius: "12px", display: "flex", flexDirection: "column", gap: "8px", cursor: "pointer", transition: "border-color 0.2s" }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontSize: "11px", color: "#94a3b8", fontWeight: "bold", textTransform: "uppercase" }}>Active Permits</span>
+                      <FileText size={16} style={{ color: "#f87171" }} />
+                    </div>
+                    <span style={{ fontSize: "28px", fontWeight: "900", color: "#ffffff" }}>128</span>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontSize: "11px", color: "#f87171" }}>Pending Review</span>
+                      <span style={{ fontSize: "10px", color: "#34d399", display: "flex", alignItems: "center", gap: "4px" }}>Drill down <ArrowRight size={10} /></span>
+                    </div>
                   </div>
-                  <span style={{ fontSize: "24px", fontWeight: "900", color: "#ffffff" }}>{activeSessionsCount.toLocaleString()}</span>
-                  <span style={{ fontSize: "11px", color: "#60a5fa" }}>Across all 4 Portal Tiers</span>
-                </div>
 
-                <div style={{ padding: "20px", backgroundColor: "#0f172a", border: "1px solid rgba(245, 158, 11, 0.3)", borderRadius: "12px", display: "flex", flexDirection: "column", gap: "8px" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: "10px", color: "#94a3b8", fontWeight: "bold", textTransform: "uppercase" }}>Security Telemetry</span>
-                    <ShieldCheck size={18} style={{ color: "#fbbf24" }} />
+                  <div 
+                    onClick={() => setSelectedDrillItem({ title: 'Approved EIA Reports Detail', type: 'metric', value: '1,042 Verified Records', details: 'Complete repository of approved Environmental Impact Assessment documents indexed by hydrological zones.' })}
+                    style={{ padding: "20px", backgroundColor: "#0f172a", border: "1px solid #1e293b", borderRadius: "12px", display: "flex", flexDirection: "column", gap: "8px", cursor: "pointer" }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontSize: "11px", color: "#94a3b8", fontWeight: "bold", textTransform: "uppercase" }}>Approved EIA Reports</span>
+                      <CheckCircle2 size={16} style={{ color: "#34d399" }} />
+                    </div>
+                    <span style={{ fontSize: "28px", fontWeight: "900", color: "#ffffff" }}>1,042</span>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontSize: "11px", color: "#34d399" }}>Verified Records</span>
+                      <span style={{ fontSize: "10px", color: "#34d399", display: "flex", alignItems: "center", gap: "4px" }}>Drill down <ArrowRight size={10} /></span>
+                    </div>
                   </div>
-                  <span style={{ fontSize: "24px", fontWeight: "900", color: "#ffffff" }}>0 Threats</span>
-                  <span style={{ fontSize: "11px", color: "#fbbf24" }}>Firewall & Auth Guard Active</span>
-                </div>
 
-                <div style={{ padding: "20px", backgroundColor: "#0f172a", border: "1px solid rgba(168, 85, 247, 0.3)", borderRadius: "12px", display: "flex", flexDirection: "column", gap: "8px" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: "10px", color: "#94a3b8", fontWeight: "bold", textTransform: "uppercase" }}>DB Utilization</span>
-                    <HardDrive size={18} style={{ color: "#c084fc" }} />
+                  <div 
+                    onClick={() => setSelectedDrillItem({ title: 'GIS Mapped Zones Detail', type: 'metric', value: '36 States Integrated', details: 'Full geospatial coordinate mapping across all 36 federation states plus the Federal Capital Territory.' })}
+                    style={{ padding: "20px", backgroundColor: "#0f172a", border: "1px solid #1e293b", borderRadius: "12px", display: "flex", flexDirection: "column", gap: "8px", cursor: "pointer" }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontSize: "11px", color: "#94a3b8", fontWeight: "bold", textTransform: "uppercase" }}>GIS Mapped Zones</span>
+                      <MapPin size={16} style={{ color: "#60a5fa" }} />
+                    </div>
+                    <span style={{ fontSize: "28px", fontWeight: "900", color: "#ffffff" }}>36</span>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontSize: "11px", color: "#60a5fa" }}>States Integrated</span>
+                      <span style={{ fontSize: "10px", color: "#34d399", display: "flex", alignItems: "center", gap: "4px" }}>Drill down <ArrowRight size={10} /></span>
+                    </div>
                   </div>
-                  <span style={{ fontSize: "24px", fontWeight: "900", color: "#ffffff" }}>{dbStorageUsed}</span>
-                  <span style={{ fontSize: "11px", color: "#c084fc" }}>45% Allocated Capacity</span>
+
                 </div>
               </div>
 
-              {/* Status Modules */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "20px" }}>
-                <div style={{ padding: "20px", backgroundColor: "#0f172a", border: "1px solid #1e293b", borderRadius: "12px", display: "flex", flexDirection: "column", gap: "12px" }}>
-                  <h3 style={{ fontSize: "13px", fontWeight: "bold", color: "#ffffff", margin: 0, textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                    Role-Based Access Control (RBAC) Guard
-                  </h3>
-                  <p style={{ fontSize: "12px", color: "#94a3b8", margin: 0 }}>
-                    Strict policy enforcement restricts access levels based on officer assignment.
-                  </p>
-                  <div style={{ padding: "12px", backgroundColor: "#020617", borderRadius: "8px", border: "1px solid #1e293b", fontSize: "11px", fontFamily: "monospace", color: "#34d399" }}>
-                    Status: Enforced via Supabase Row-Level Security (RLS)
-                  </div>
-                </div>
+              {/* Publication & Review Workflows Section */}
+              <div>
+                <h3 style={{ fontSize: "14px", fontWeight: "bold", color: "#ffffff", margin: "0 0 12px 0", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                  Publication & Review Workflows
+                </h3>
 
-                <div style={{ padding: "20px", backgroundColor: "#0f172a", border: "1px solid #1e293b", borderRadius: "12px", display: "flex", flexDirection: "column", gap: "12px" }}>
-                  <h3 style={{ fontSize: "13px", fontWeight: "bold", color: "#ffffff", margin: 0, textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                    System Core Actions
-                  </h3>
-                  <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "20px" }}>
+                  <div style={{ padding: "20px", backgroundColor: "#0f172a", border: "1px solid #1e293b", borderRadius: "12px", display: "flex", flexDirection: "column", justifyContent: "space-between", gap: "16px" }}>
+                    <div>
+                      <h4 style={{ fontSize: "14px", fontWeight: "bold", color: "#ffffff", margin: "0 0 4px 0" }}>System Security & IAM</h4>
+                      <p style={{ fontSize: "12px", color: "#94a3b8", margin: 0 }}>Manage root RBAC policies, API tokens, and admin credentials.</p>
+                    </div>
                     <button 
-                      onClick={() => setIsProvisionModalOpen(true)} 
-                      style={{ padding: "10px 14px", backgroundColor: "#10b981", border: "none", borderRadius: "8px", color: "#020617", fontSize: "12px", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}
+                      onClick={() => setActiveSubTab('iam')}
+                      style={{ padding: "8px 14px", backgroundColor: "#1e293b", border: "1px solid #334155", borderRadius: "8px", color: "#34d399", fontSize: "12px", fontWeight: "bold", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "6px", width: "fit-content" }}
                     >
-                      <UserPlus size={14} />
-                      <span>Provision Staff Account</span>
+                      <span>Manage IAM</span>
+                      <ArrowRight size={12} />
+                    </button>
+                  </div>
+
+                  <div style={{ padding: "20px", backgroundColor: "#0f172a", border: "1px solid #1e293b", borderRadius: "12px", display: "flex", flexDirection: "column", justifyContent: "space-between", gap: "16px" }}>
+                    <div>
+                      <h4 style={{ fontSize: "14px", fontWeight: "bold", color: "#ffffff", margin: "0 0 4px 0" }}>Audit Log Inspection</h4>
+                      <p style={{ fontSize: "12px", color: "#94a3b8", margin: 0 }}>Monitor active telemetry feeds and infrastructure logs.</p>
+                    </div>
+                    <button 
+                      onClick={() => setActiveSubTab('audit')}
+                      style={{ padding: "8px 14px", backgroundColor: "#1e293b", border: "1px solid #334155", borderRadius: "8px", color: "#34d399", fontSize: "12px", fontWeight: "bold", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "6px", width: "fit-content" }}
+                    >
+                      <span>View Logs</span>
+                      <ArrowRight size={12} />
                     </button>
                   </div>
                 </div>
@@ -498,13 +550,112 @@ export default function SuperAdminDashboard() {
             </div>
           )}
 
-          {/* RBAC Provisioning Tab */}
-          {activeTab === 'rbac' && (
+          {/* TAB 2: OPERATIONAL WORKFLOWS (Attachment 4) */}
+          {activeSubTab === 'workflows' && (
             <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
                 <div>
-                  <h3 style={{ fontSize: "16px", fontWeight: "bold", color: "#ffffff", margin: 0 }}>User & Institutional Staff Provisioning</h3>
-                  <p style={{ fontSize: "12px", color: "#94a3b8", margin: 0 }}>Manage user roles and institutional access across all departments.</p>
+                  <h3 style={{ fontSize: "16px", fontWeight: "bold", color: "#ffffff", margin: 0 }}>Operational Filings & Queue Management</h3>
+                  <p style={{ fontSize: "12px", color: "#94a3b8", margin: 0 }}>Review and approve national environmental assessments and permits.</p>
+                </div>
+
+                <button 
+                  onClick={() => setIsNewEntryModalOpen(true)}
+                  style={{ padding: "8px 16px", backgroundColor: "#10b981", border: "none", borderRadius: "8px", color: "#020617", fontWeight: "bold", fontSize: "12px", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}
+                >
+                  <PlusCircle size={14} />
+                  <span>Create Entry</span>
+                </button>
+              </div>
+
+              {/* Records Table with Clickable Rows */}
+              <div style={{ overflowX: "auto", backgroundColor: "#0f172a", border: "1px solid #1e293b", borderRadius: "12px" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px", textAlign: "left" }}>
+                  <thead>
+                    <tr style={{ backgroundColor: "#020617", borderBottom: "1px solid #1e293b", color: "#94a3b8" }}>
+                      <th style={{ padding: "12px 16px" }}>REF ID</th>
+                      <th style={{ padding: "12px 16px" }}>TASK TITLE</th>
+                      <th style={{ padding: "12px 16px" }}>CATEGORY</th>
+                      <th style={{ padding: "12px 16px" }}>STATUS</th>
+                      <th style={{ padding: "12px 16px" }}>DATE</th>
+                      <th style={{ padding: "12px 16px", textAlign: "right" }}>ACTION</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {operationalRecords.map((rec) => (
+                      <tr 
+                        key={rec.id} 
+                        style={{ borderBottom: "1px solid #1e293b", cursor: "pointer" }}
+                        onClick={() => setSelectedDrillItem({ title: `Filing Details: ${rec.ref_id}`, type: 'workflow', data: rec })}
+                      >
+                        <td style={{ padding: "12px 16px", fontWeight: "bold", color: "#34d399" }}>{rec.ref_id}</td>
+                        <td style={{ padding: "12px 16px", color: "#ffffff" }}>{rec.task_title}</td>
+                        <td style={{ padding: "12px 16px", color: "#94a3b8" }}>{rec.category}</td>
+                        <td style={{ padding: "12px 16px" }}>
+                          <span style={{ padding: "2px 8px", borderRadius: "10px", fontSize: "10px", fontWeight: "bold", backgroundColor: rec.status === 'Approved' ? "rgba(16, 185, 129, 0.2)" : "rgba(245, 158, 11, 0.2)", color: rec.status === 'Approved' ? "#34d399" : "#fbbf24" }}>
+                            {rec.status}
+                          </span>
+                        </td>
+                        <td style={{ padding: "12px 16px", color: "#94a3b8" }}>{rec.date}</td>
+                        <td style={{ padding: "12px 16px", textAlign: "right" }}>
+                          <button style={{ padding: "4px 8px", backgroundColor: "#1e293b", border: "1px solid #334155", borderRadius: "4px", color: "#34d399", fontSize: "11px", cursor: "pointer" }}>
+                            Inspect
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 3: GIS RESOURCE MAP (Attachment 3) */}
+          {activeSubTab === 'gis' && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+              <h3 style={{ fontSize: "16px", fontWeight: "bold", color: "#ffffff", margin: 0 }}>Interactive GIS Resource & Telemetry Grid</h3>
+              <div 
+                onClick={() => setSelectedDrillItem({ title: 'GIS Telemetry Grid Drill-down', type: 'gis', details: 'All 36 states have active geospatial layers synchronized with the National Environmental Data Hub.' })}
+                style={{ padding: "40px", backgroundColor: "#0f172a", border: "1px solid #1e293b", borderRadius: "12px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "16px", minHeight: "300px", cursor: "pointer" }}
+              >
+                <MapPin size={36} style={{ color: "#34d399" }} />
+                <span style={{ fontSize: "14px", fontWeight: "bold", color: "#ffffff" }}>GIS Telemetry Layer Active (Click to Inspect Grid)</span>
+                <p style={{ fontSize: "12px", color: "#94a3b8", textAlign: "center", maxWidth: "400px", margin: 0 }}>
+                  Spatial coordinates synced for designated environmental conservation zones across all 36 states and the FCT.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4: SYSTEM CONTROL & AUDIT (Attachment 2) */}
+          {activeSubTab === 'audit' && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+              <h3 style={{ fontSize: "16px", fontWeight: "bold", color: "#ffffff", margin: 0 }}>System Control & Audit Logs</h3>
+              <div 
+                onClick={() => setSelectedDrillItem({ title: 'Root Access Terminal Inspection', type: 'audit', details: 'Full root privileges verified. Zero anomalies in database RLS policies.' })}
+                style={{ padding: "20px", backgroundColor: "#0f172a", border: "1px solid #1e293b", borderRadius: "12px", display: "flex", flexDirection: "column", gap: "12px", cursor: "pointer" }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#34d399", fontSize: "13px", fontWeight: "bold" }}>
+                  <Terminal size={16} />
+                  <span>Root Access Terminal Active (Click for Audit Trail)</span>
+                </div>
+                <p style={{ fontSize: "12px", color: "#94a3b8", margin: 0 }}>
+                  Manage administrative roles, audit security logs, and deploy system updates across all sub-portals.
+                </p>
+                <div style={{ padding: "12px", backgroundColor: "#020617", borderRadius: "8px", border: "1px solid #1e293b", fontSize: "11px", fontFamily: "monospace", color: "#cbd5e1" }}>
+                  [INFO] 2026-09-26 19:37:00 - Superadmin session verified via Supabase RLS. Zero vulnerabilities detected.
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 5: USER PROVISIONING & IAM */}
+          {activeSubTab === 'iam' && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
+                <div>
+                  <h3 style={{ fontSize: "16px", fontWeight: "bold", color: "#ffffff", margin: 0 }}>Role-Based Access Control (RBAC) & IAM</h3>
+                  <p style={{ fontSize: "12px", color: "#94a3b8", margin: 0 }}>Superadmin account creation, assignment, and role management.</p>
                 </div>
 
                 <button 
@@ -516,7 +667,7 @@ export default function SuperAdminDashboard() {
                 </button>
               </div>
 
-              {/* Filter and Search controls */}
+              {/* Filter controls */}
               <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", backgroundColor: "#0f172a", padding: "12px", borderRadius: "8px", border: "1px solid #1e293b" }}>
                 <div style={{ flex: 1, minWidth: "200px", position: "relative" }}>
                   <input 
@@ -592,28 +743,10 @@ export default function SuperAdminDashboard() {
             </div>
           )}
 
-          {/* Audit Logs Tab */}
-          {activeTab === 'logs' && (
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-              <h3 style={{ fontSize: "14px", fontWeight: "bold", color: "#ffffff", margin: 0 }}>System Infrastructure & Security Logs</h3>
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                {activityLogs.map((log) => (
-                  <div key={log.id} style={{ padding: "12px 16px", backgroundColor: "#020617", border: "1px solid #1e293b", borderRadius: "8px", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "12px", fontFamily: "monospace" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                      <span style={{ color: "#34d399", fontWeight: "bold" }}>[{log.type}]</span>
-                      <span style={{ color: "#cbd5e1" }}>{log.message}</span>
-                    </div>
-                    <span style={{ color: "#64748b", fontSize: "11px" }}>{log.timestamp}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
         </div>
       </div>
 
-      {/* Account Provisioning Modal Overlay */}
+      {/* Account Provisioning Modal (Attachment 1 format) */}
       {isProvisionModalOpen && (
         <div style={{ position: "fixed", inset: 0, zIndex: 50, backgroundColor: "rgba(2, 6, 23, 0.85)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
           <div style={{ backgroundColor: "#0f172a", border: "1px solid #10b981", width: "100%", maxWidth: "480px", borderRadius: "12px", padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
@@ -649,6 +782,86 @@ export default function SuperAdminDashboard() {
                 Confirm Provisioning
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* New Operational Entry Modal */}
+      {isNewEntryModalOpen && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 50, backgroundColor: "rgba(2, 6, 23, 0.85)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
+          <div style={{ backgroundColor: "#0f172a", border: "1px solid #10b981", width: "100%", maxWidth: "480px", borderRadius: "12px", padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #1e293b", paddingBottom: "10px" }}>
+              <h3 style={{ fontSize: "14px", fontWeight: "bold", color: "#ffffff", margin: 0 }}>Create Operational Filing</h3>
+              <button onClick={() => setIsNewEntryModalOpen(false)} style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer" }}><X size={16} /></button>
+            </div>
+
+            <form onSubmit={handleCreateEntry} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              <div>
+                <label style={{ fontSize: "11px", color: "#94a3b8", display: "block", marginBottom: "4px" }}>Task Title / Review Directive</label>
+                <input type="text" required placeholder="e.g. Coastal Erosion Audit Phase 2" value={newEntryTitle} onChange={(e) => setNewEntryTitle(e.target.value)} style={{ width: "100%", backgroundColor: "#020617", border: "1px solid #1e293b", borderRadius: "6px", padding: "8px", color: "#ffffff", fontSize: "12px" }} />
+              </div>
+
+              <div>
+                <label style={{ fontSize: "11px", color: "#94a3b8", display: "block", marginBottom: "4px" }}>Category</label>
+                <select value={newEntryCategory} onChange={(e) => setNewEntryCategory(e.target.value)} style={{ width: "100%", backgroundColor: "#020617", border: "1px solid #1e293b", borderRadius: "6px", padding: "8px", color: "#ffffff", fontSize: "12px" }}>
+                  <option value="Soil & Water">Soil & Water</option>
+                  <option value="Forestry Conservation">Forestry Conservation</option>
+                  <option value="Hydrology">Hydrology</option>
+                  <option value="GIS Mapping">GIS Mapping</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ fontSize: "11px", color: "#94a3b8", display: "block", marginBottom: "4px" }}>Detailed Description</label>
+                <textarea rows={3} placeholder="Enter scope and review notes..." value={newEntryDesc} onChange={(e) => setNewEntryDesc(e.target.value)} style={{ width: "100%", backgroundColor: "#020617", border: "1px solid #1e293b", borderRadius: "6px", padding: "8px", color: "#ffffff", fontSize: "12px" }} />
+              </div>
+
+              <button type="submit" style={{ padding: "10px", backgroundColor: "#10b981", border: "none", borderRadius: "6px", color: "#020617", fontWeight: "bold", fontSize: "12px", cursor: "pointer", marginTop: "8px" }}>
+                Submit Filing
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Universal Drill-down Modal */}
+      {selectedDrillItem && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 60, backgroundColor: "rgba(2, 6, 23, 0.85)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
+          <div style={{ backgroundColor: "#0f172a", border: "1px solid #34d399", width: "100%", maxWidth: "520px", borderRadius: "12px", padding: "24px", display: "flex", flexDirection: "column", gap: "16px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #1e293b", paddingBottom: "12px" }}>
+              <h3 style={{ fontSize: "16px", fontWeight: "bold", color: "#ffffff", margin: 0 }}>{selectedDrillItem.title}</h3>
+              <button onClick={() => setSelectedDrillItem(null)} style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer" }}><X size={18} /></button>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px", fontSize: "13px", color: "#cbd5e1" }}>
+              {selectedDrillItem.type === 'metric' && (
+                <>
+                  <p><strong style={{ color: "#34d399" }}>Summary Value:</strong> {selectedDrillItem.value}</p>
+                  <p><strong style={{ color: "#ffffff" }}>Operational Context:</strong> {selectedDrillItem.details}</p>
+                  <div style={{ padding: "12px", backgroundColor: "#020617", borderRadius: "8px", border: "1px solid #1e293b", fontSize: "12px" }}>
+                    Status: Fully verified and synced across regional server clusters.
+                  </div>
+                </>
+              )}
+
+              {selectedDrillItem.type === 'workflow' && (
+                <>
+                  <p><strong style={{ color: "#34d399" }}>Reference ID:</strong> {selectedDrillItem.data.ref_id}</p>
+                  <p><strong style={{ color: "#ffffff" }}>Task Title:</strong> {selectedDrillItem.data.task_title}</p>
+                  <p><strong style={{ color: "#ffffff" }}>Category:</strong> {selectedDrillItem.data.category}</p>
+                  <p><strong style={{ color: "#ffffff" }}>Current Status:</strong> {selectedDrillItem.data.status}</p>
+                  <p><strong style={{ color: "#ffffff" }}>Description:</strong> {selectedDrillItem.data.description}</p>
+                </>
+              )}
+
+              {(selectedDrillItem.type === 'gis' || selectedDrillItem.type === 'audit') && (
+                <p>{selectedDrillItem.details}</p>
+              )}
+            </div>
+
+            <button onClick={() => setSelectedDrillItem(null)} style={{ padding: "10px", backgroundColor: "#1e293b", border: "1px solid #334155", borderRadius: "6px", color: "#ffffff", fontWeight: "bold", fontSize: "12px", cursor: "pointer", marginTop: "8px" }}>
+              Close Inspection
+            </button>
           </div>
         </div>
       )}

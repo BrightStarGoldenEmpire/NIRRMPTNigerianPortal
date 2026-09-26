@@ -29,7 +29,11 @@ import {
   ChevronUp,
   Circle,
   Users,
-  UserCheck
+  UserCheck,
+  LayoutDashboard,
+  Briefcase,
+  Layers,
+  Map
 } from 'lucide-react';
 
 interface StaffProfile {
@@ -92,7 +96,9 @@ export default function StaffDashboard() {
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
 
-  // Active View Tab (Dashboard vs Profile)
+  // Active Sidebar Role Tab & Sub-module
+  const [activeRole, setActiveRole] = useState<'public' | 'staff' | 'directorate' | 'superadmin'>('staff');
+  const [activeSubModule, setActiveSubModule] = useState<'overview' | 'workflows' | 'gis'>('overview');
   const [activeTab, setActiveTab] = useState<'dashboard' | 'profile'>('dashboard');
 
   // Profile Form States
@@ -107,7 +113,7 @@ export default function StaffDashboard() {
   const [mediaList, setMediaList] = useState<DetailRecord[]>([]);
   const [bulletinsList, setBulletinsList] = useState<DetailRecord[]>([]);
 
-  // Modals & Drawers State
+  // Modals & Overlay States
   const [selectedCard, setSelectedCard] = useState<'submissions' | 'surveys' | 'media' | 'bulletins' | null>(null);
   const [expandedRecordId, setExpandedRecordId] = useState<string | number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -132,12 +138,21 @@ export default function StaffDashboard() {
   const [mediaCaption, setMediaCaption] = useState('');
   const [mediaFile, setMediaFile] = useState<File | null>(null);
 
+  // Role Navigation Router
+  const handleRoleNavigation = (role: 'public' | 'staff' | 'directorate' | 'superadmin') => {
+    setActiveRole(role);
+    if (role === 'public') router.push('/dashboard/citizen');
+    if (role === 'staff') router.push('/dashboard/staff');
+    if (role === 'directorate') router.push('/dashboard/admin');
+    if (role === 'superadmin') router.push('/dashboard/superadmin');
+  };
+
   // Data Fetching Engine
   const loadWorkspaceData = useCallback(async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
-      let currentUserEmail = 'hello@yopmail.com';
+      let currentUserEmail = 'staff.officer@nirrmpt.gov.ng';
       let currentUserId = '';
 
       if (session?.user) {
@@ -385,8 +400,8 @@ export default function StaffDashboard() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: "60vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "12px", color: "#f59e0b" }}>
-        <div style={{ width: "28px", height: "28px", border: "3px solid #f59e0b", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 1s linear infinite" }} />
+      <div style={{ minHeight: "100vh", backgroundColor: "#020617", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "12px", color: "#f59e0b" }}>
+        <div style={{ width: "32px", height: "32px", border: "3px solid #f59e0b", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 1s linear infinite" }} />
         <span style={{ fontSize: "12px", fontWeight: "600", letterSpacing: "1px", textTransform: "uppercase" }}>Loading Operational Workspace...</span>
       </div>
     );
@@ -426,587 +441,333 @@ export default function StaffDashboard() {
   });
 
   return (
-    <div style={{ maxWidth: "1280px", margin: "0 auto", padding: "24px 16px", color: "#f8fafc", fontFamily: "system-ui, -apple-system, sans-serif" }}>
+    <div style={{ minHeight: "100vh", backgroundColor: "#020617", color: "#f8fafc", fontFamily: "system-ui, -apple-system, sans-serif", display: "flex", flexDirection: "column" }}>
       
-      {/* Dynamic Institute Header Banner with Official Logo */}
-      <div style={{ padding: "16px 20px", backgroundColor: "#020617", border: "1px solid #1e293b", borderRadius: "16px", marginBottom: "20px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-          <div style={{ width: "44px", height: "44px", borderRadius: "10px", backgroundColor: "rgba(245, 158, 11, 0.15)", border: "1px solid #f59e0b", display: "flex", alignItems: "center", justifyContent: "center", color: "#fbbf24", fontWeight: "900", fontSize: "18px" }}>
-            <Building2 size={24} />
-          </div>
-          <div>
-            <div style={{ fontSize: "16px", fontWeight: "900", letterSpacing: "0.5px", color: "#ffffff", display: "flex", alignItems: "center", gap: "8px" }}>
-              <span>NIRRMPT PORTAL</span>
-              <span style={{ fontSize: "10px", padding: "2px 8px", borderRadius: "12px", backgroundColor: "rgba(16, 185, 129, 0.2)", color: "#34d399", border: "1px solid rgba(16, 185, 129, 0.4)", fontWeight: "bold" }}>SYSTEM ACTIVE</span>
-            </div>
-            <p style={{ fontSize: "11px", color: "#94a3b8", margin: "2px 0 0 0" }}>Nigerian Institute of Regenerative Resource Management & Protection Technologies</p>
-          </div>
+      {/* Top Banner Bar */}
+      <div style={{ padding: "8px 24px", backgroundColor: "#00111a", borderBottom: "1px solid #1e293b", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "11px", color: "#94a3b8" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <Circle size={8} style={{ color: "#10b981", fill: "#10b981" }} />
+          <span>Official Federal Portal - Republic of Nigeria</span>
+        </div>
+        <div>
+          <span>+2348025252362</span> | <span>Port Harcourt, Rivers State</span>
         </div>
       </div>
 
-      {/* Top Navigation Bar */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexWrap: "wrap", gap: "12px" }}>
-        <button
-          onClick={() => {
-            if (activeTab === 'profile') {
-              setActiveTab('dashboard');
-            } else {
-              router.back();
-            }
-          }}
-          style={{ display: "inline-flex", alignItems: "center", gap: "8px", padding: "8px 14px", backgroundColor: "#0f172a", border: "1px solid #334155", borderRadius: "10px", color: "#f8fafc", fontSize: "12px", fontWeight: "600", cursor: "pointer", transition: "all 0.2s" }}
-        >
-          <ArrowLeft size={16} style={{ color: "#fbbf24" }} />
-          <span>Back</span>
-        </button>
+      {/* Main Header with Navigation Tabs */}
+      <div style={{ padding: "16px 24px", backgroundColor: "#020617", borderBottom: "1px solid #1e293b", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "16px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+          <div style={{ width: "42px", height: "42px", borderRadius: "8px", backgroundColor: "rgba(245, 158, 11, 0.15)", border: "1px solid #f59e0b", display: "flex", alignItems: "center", justifyContent: "center", color: "#fbbf24", fontWeight: "bold" }}>
+            <Building2 size={24} />
+          </div>
+          <div>
+            <h1 style={{ fontSize: "18px", fontWeight: "900", color: "#ffffff", margin: 0, letterSpacing: "0.5px" }}>NIRRMPT Nigeria</h1>
+            <p style={{ fontSize: "10px", color: "#64748b", margin: 0, letterSpacing: "0.5px" }}>REGENERATIVE RESOURCE MANAGEMENT & PROTECTION</p>
+          </div>
+        </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          <button
+        <div style={{ display: "flex", alignItems: "center", gap: "16px", flexWrap: "wrap" }}>
+          <button onClick={() => router.push('/')} style={{ background: "none", border: "none", color: "#cbd5e1", fontSize: "12px", cursor: "pointer" }}>Home</button>
+          <button onClick={() => router.push('/about')} style={{ background: "none", border: "none", color: "#cbd5e1", fontSize: "12px", cursor: "pointer" }}>About Us</button>
+          <button onClick={() => router.push('/leadership')} style={{ background: "none", border: "none", color: "#cbd5e1", fontSize: "12px", cursor: "pointer" }}>Leadership & Board</button>
+          <button onClick={() => router.push('/departments')} style={{ background: "none", border: "none", color: "#cbd5e1", fontSize: "12px", cursor: "pointer" }}>Departments</button>
+          <button onClick={() => router.push('/contact')} style={{ background: "none", border: "none", color: "#cbd5e1", fontSize: "12px", cursor: "pointer" }}>Contact</button>
+
+          <button 
             onClick={() => setActiveTab(activeTab === 'dashboard' ? 'profile' : 'dashboard')}
-            style={{ display: "inline-flex", alignItems: "center", gap: "8px", padding: "8px 14px", backgroundColor: activeTab === 'profile' ? '#f59e0b' : '#0f172a', border: "1px solid #334155", borderRadius: "10px", color: activeTab === 'profile' ? '#020617' : '#f8fafc', fontSize: "12px", fontWeight: "600", cursor: "pointer" }}
+            style={{ padding: "8px 16px", backgroundColor: "rgba(245, 158, 11, 0.1)", border: "1px solid rgba(245, 158, 11, 0.4)", borderRadius: "8px", color: "#fbbf24", fontSize: "12px", fontWeight: "600", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}
           >
-            <User size={15} />
+            <User size={14} />
             <span>{activeTab === 'profile' ? 'Workspace' : 'Profile & Settings'}</span>
           </button>
 
-          <button
+          <button 
             onClick={handleSignOut}
-            style={{ display: "inline-flex", alignItems: "center", gap: "8px", padding: "8px 14px", backgroundColor: "rgba(239, 68, 68, 0.1)", border: "1px solid rgba(239, 68, 68, 0.3)", borderRadius: "10px", color: "#f87171", fontSize: "12px", fontWeight: "600", cursor: "pointer" }}
+            style={{ padding: "8px 16px", backgroundColor: "rgba(239, 68, 68, 0.1)", border: "1px solid rgba(239, 68, 68, 0.4)", borderRadius: "8px", color: "#f87171", fontSize: "12px", fontWeight: "600", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}
           >
-            <LogOut size={15} />
+            <LogOut size={14} />
             <span>Sign Out</span>
           </button>
         </div>
       </div>
 
-      {/* Toast Alert */}
-      {actionSuccess && (
-        <div style={{ padding: "12px 16px", backgroundColor: "rgba(6, 78, 59, 0.9)", border: "1px solid #10b981", borderRadius: "10px", display: "flex", alignItems: "center", gap: "10px", color: "#34d399", fontSize: "12px", marginBottom: "20px" }}>
-          <CheckCircle2 size={16} />
-          <span>{actionSuccess}</span>
+      {/* Main Layout Body */}
+      <div style={{ display: "flex", flex: 1 }}>
+        
+        {/* Sidebar Role Navigator */}
+        <div style={{ width: "240px", backgroundColor: "#020617", borderRight: "1px solid #1e293b", padding: "20px 12px", display: "flex", flexDirection: "column", gap: "8px" }}>
+          <span style={{ fontSize: "10px", fontWeight: "bold", color: "#64748b", textTransform: "uppercase", letterSpacing: "1px", padding: "0 8px 8px 8px" }}>
+            Role Portals
+          </span>
+
+          <button
+            onClick={() => handleRoleNavigation('public')}
+            style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "none", backgroundColor: activeRole === 'public' ? "#10b981" : "transparent", color: activeRole === 'public' ? "#020617" : "#94a3b8", fontSize: "12px", fontWeight: "bold", textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}
+          >
+            <Users size={16} />
+            <span>Public & Partner Hub</span>
+          </button>
+
+          <button
+            onClick={() => handleRoleNavigation('staff')}
+            style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "none", backgroundColor: activeRole === 'staff' ? "#10b981" : "transparent", color: activeRole === 'staff' ? "#020617" : "#94a3b8", fontSize: "12px", fontWeight: "bold", textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}
+          >
+            <Briefcase size={16} />
+            <span>Staff Field Desk</span>
+          </button>
+
+          <button
+            onClick={() => handleRoleNavigation('directorate')}
+            style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "none", backgroundColor: activeRole === 'directorate' ? "#10b981" : "transparent", color: activeRole === 'directorate' ? "#020617" : "#94a3b8", fontSize: "12px", fontWeight: "bold", textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}
+          >
+            <Building2 size={16} />
+            <span>Directorate Operations</span>
+          </button>
+
+          <button
+            onClick={() => handleRoleNavigation('superadmin')}
+            style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "none", backgroundColor: activeRole === 'superadmin' ? "#10b981" : "transparent", color: activeRole === 'superadmin' ? "#020617" : "#94a3b8", fontSize: "12px", fontWeight: "bold", textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}
+          >
+            <ShieldCheck size={16} />
+            <span>Super Admin Core</span>
+          </button>
         </div>
-      )}
 
-      {/* PROFILE PAGE VIEW */}
-      {activeTab === 'profile' ? (
-        <div style={{ padding: "28px", backgroundColor: "#0f172a", border: "1px solid #1e293b", borderRadius: "16px", display: "flex", flexDirection: "column", gap: "24px" }}>
-          <div style={{ borderBottom: "1px solid #1e293b", paddingBottom: "16px" }}>
-            <h2 style={{ fontSize: "20px", fontWeight: "800", margin: "0 0 4px 0", color: "#ffffff" }}>User Profile & Operational Settings</h2>
-            <p style={{ fontSize: "12px", color: "#94a3b8", margin: 0 }}>Manage your field operational credentials, department assignment, and notification preferences.</p>
-          </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "24px" }}>
-            
-            {/* Avatar Upload */}
-            <div style={{ padding: "20px", backgroundColor: "#020617", border: "1px solid #1e293b", borderRadius: "12px", display: "flex", flexDirection: "column", alignItems: "center", gap: "16px", textAlign: "center" }}>
-              <div style={{ position: "relative", width: "96px", height: "96px", borderRadius: "50%", overflow: "hidden", border: "2px solid #f59e0b", backgroundColor: "#1e293b", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                {profileAvatar ? (
-                  <img src={profileAvatar} alt="Profile" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                ) : (
-                  <User size={48} style={{ color: "#64748b" }} />
-                )}
+        {/* Content Panel Area */}
+        <div style={{ flex: 1, padding: "24px", overflowY: "auto" }}>
+          
+          {/* Sub-Header Banner */}
+          <div style={{ padding: "16px 20px", backgroundColor: "#0f172a", border: "1px solid #1e293b", borderRadius: "12px", marginBottom: "20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <div style={{ padding: "8px", backgroundColor: "rgba(245, 158, 11, 0.15)", borderRadius: "8px", color: "#fbbf24" }}>
+                <Briefcase size={20} />
               </div>
-              <label style={{ cursor: "pointer", padding: "8px 16px", backgroundColor: "#1e293b", border: "1px solid #334155", borderRadius: "8px", color: "#f8fafc", fontSize: "12px", fontWeight: "600" }}>
-                Upload Profile Picture
-                <input type="file" accept="image/*" onChange={handleProfileAvatarChange} style={{ display: "none" }} />
-              </label>
-              <span style={{ fontSize: "11px", color: "#64748b" }}>PNG, JPG or WEBP up to 5MB</span>
-            </div>
-
-            {/* Assigned Department Select Dropdown */}
-            <div style={{ padding: "20px", backgroundColor: "#020617", border: "1px solid #1e293b", borderRadius: "12px", display: "flex", flexDirection: "column", gap: "16px" }}>
-              <h3 style={{ fontSize: "14px", fontWeight: "bold", margin: 0, color: "#fbbf24", display: "flex", alignItems: "center", gap: "8px" }}>
-                <Settings size={16} /> Operational Settings
-              </h3>
-              
               <div>
-                <label style={{ display: "block", fontSize: "11px", color: "#94a3b8", marginBottom: "4px" }}>Full Officer Name</label>
-                <input
-                  type="text"
-                  value={profileName}
-                  onChange={(e) => setProfileName(e.target.value)}
-                  style={{ width: "100%", backgroundColor: "#0f172a", border: "1px solid #1e293b", borderRadius: "8px", padding: "8px 12px", color: "#ffffff", fontSize: "12px", boxSizing: "border-box" }}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: "block", fontSize: "11px", color: "#94a3b8", marginBottom: "4px" }}>Email Address</label>
-                <input
-                  type="text"
-                  disabled
-                  value={profile?.email || ''}
-                  style={{ width: "100%", backgroundColor: "#0f172a", border: "1px solid #1e293b", borderRadius: "8px", padding: "8px 12px", color: "#64748b", fontSize: "12px", boxSizing: "border-box" }}
-                />
-              </div>
-
-              {/* Department Dropdown */}
-              <div>
-                <label style={{ display: "block", fontSize: "11px", color: "#fbbf24", fontWeight: "bold", marginBottom: "4px" }}>
-                  Assigned Department (Select Division)
-                </label>
-                <select
-                  value={selectedDepartment}
-                  onChange={(e) => setSelectedDepartment(e.target.value)}
-                  style={{ width: "100%", backgroundColor: "#0f172a", border: "1px solid #f59e0b", borderRadius: "8px", padding: "8px 12px", color: "#ffffff", fontSize: "12px", boxSizing: "border-box", cursor: "pointer", outline: "none" }}
-                >
-                  {DEPARTMENTS.map((dept) => (
-                    <option key={dept} value={dept} style={{ backgroundColor: "#020617", color: "#ffffff" }}>
-                      {dept}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "8px" }}>
-                <input
-                  type="checkbox"
-                  id="notif"
-                  checked={emailNotifications}
-                  onChange={(e) => setEmailNotifications(e.target.checked)}
-                  style={{ accentColor: "#f59e0b" }}
-                />
-                <label htmlFor="notif" style={{ fontSize: "12px", color: "#cbd5e1", cursor: "pointer" }}>Receive email alerts on report approval updates</label>
-              </div>
-
-              <button
-                onClick={() => {
-                  setActionSuccess('Profile and department assignment updated successfully.');
-                  setTimeout(() => setActionSuccess(null), 5000);
-                }}
-                style={{ marginTop: "12px", padding: "10px", backgroundColor: "#f59e0b", border: "none", borderRadius: "8px", color: "#020617", fontSize: "12px", fontWeight: "bold", cursor: "pointer" }}
-              >
-                Save Changes
-              </button>
-            </div>
-
-          </div>
-        </div>
-      ) : (
-        /* MAIN DASHBOARD VIEW */
-        <>
-          {/* Header Panel */}
-          <div style={{ padding: "24px", backgroundColor: "#0f172a", border: "1px solid rgba(245, 158, 11, 0.4)", borderRadius: "16px", marginBottom: "24px", display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: "16px" }}>
-            <div>
-              <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "4px 10px", backgroundColor: "rgba(245, 158, 11, 0.1)", border: "1px solid rgba(245, 158, 11, 0.3)", borderRadius: "20px", color: "#fbbf24", fontSize: "10px", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "8px" }}>
-                <ShieldCheck size={12} />
-                <span>Tier-3 Operations • Field & Research Desk</span>
-              </div>
-              <h1 style={{ fontSize: "24px", fontWeight: "900", margin: "0 0 6px 0", color: "#ffffff" }}>
-                Staff Operational Workspace
-              </h1>
-              <div style={{ fontSize: "12px", color: "#94a3b8", display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-                <span>Field Officer:</span>
-                <span style={{ color: "#f8fafc", fontWeight: "600", backgroundColor: "#1e293b", padding: "2px 8px", borderRadius: "4px", border: "1px solid #334155" }}>
-                  {profile?.email}
-                </span>
-                <span style={{ color: "#fbbf24", fontWeight: "500", borderLeft: "1px solid #334155", paddingLeft: "8px" }}>
-                  {selectedDepartment}
-                </span>
+                <span style={{ fontSize: "10px", color: "#fbbf24", fontWeight: "bold", letterSpacing: "1px", textTransform: "uppercase" }}>NIRRMPT PORTAL</span>
+                <h2 style={{ fontSize: "16px", fontWeight: "800", color: "#ffffff", margin: 0 }}>Staff Operational Desk</h2>
               </div>
             </div>
 
             <button
               onClick={handleRefresh}
               disabled={refreshing}
-              style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 16px", backgroundColor: "#1e293b", border: "1px solid #334155", borderRadius: "10px", color: "#f8fafc", fontSize: "12px", fontWeight: "600", cursor: "pointer" }}
+              style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 14px", backgroundColor: "#1e293b", border: "1px solid #334155", borderRadius: "8px", color: "#f8fafc", fontSize: "12px", cursor: "pointer" }}
             >
-              <RefreshCw size={14} style={{ color: "#94a3b8" }} />
-              <span>{refreshing ? "Syncing..." : "Refresh Desk"}</span>
+              <RefreshCw size={14} style={{ color: "#fbbf24" }} />
+              <span>{refreshing ? "Syncing..." : "Refresh"}</span>
             </button>
           </div>
 
-          {/* Metric Cards */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "16px", marginBottom: "24px" }}>
-            {cardConfig.map((card) => {
-              const Icon = card.icon;
-              return (
-                <div 
-                  key={card.key} 
-                  onClick={() => { setSelectedCard(card.key as any); setSearchQuery(''); setExpandedRecordId(null); }}
-                  style={{ 
-                    padding: "20px", 
-                    backgroundColor: "#0f172a", 
-                    border: selectedCard === card.key ? "1px solid #f59e0b" : "1px solid #1e293b", 
-                    borderRadius: "16px", 
-                    display: "flex", 
-                    flexDirection: "column", 
-                    gap: "8px",
-                    cursor: "pointer",
-                    transition: "all 0.2s ease"
-                  }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: "10px", color: "#94a3b8", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "1px" }}>{card.label}</span>
-                    <Icon size={16} style={{ color: card.color }} />
-                  </div>
-                  <div style={{ fontSize: "22px", fontWeight: "900", color: "#ffffff", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <span>{card.val}</span>
-                    <ChevronUp size={16} style={{ color: "#64748b", transform: "rotate(90deg)" }} />
-                  </div>
-                  <span style={{ fontSize: "11px", color: "#fbbf24", fontWeight: "500" }}>{card.note}</span>
-                </div>
-              );
-            })}
+          {/* Sub-Module Secondary Navigation */}
+          <div style={{ display: "flex", gap: "12px", marginBottom: "20px", borderBottom: "1px solid #1e293b", paddingBottom: "12px" }}>
+            <button
+              onClick={() => setActiveSubModule('overview')}
+              style={{ padding: "8px 14px", borderRadius: "6px", border: "none", backgroundColor: activeSubModule === 'overview' ? "#1e293b" : "transparent", color: activeSubModule === 'overview' ? "#38bdf8" : "#94a3b8", fontSize: "12px", fontWeight: "600", display: "flex", alignItems: "center", gap: "6px", cursor: "pointer" }}
+            >
+              <LayoutDashboard size={14} />
+              <span>Overview Dashboard</span>
+            </button>
+
+            <button
+              onClick={() => setActiveSubModule('workflows')}
+              style={{ padding: "8px 14px", borderRadius: "6px", border: "none", backgroundColor: activeSubModule === 'workflows' ? "#1e293b" : "transparent", color: activeSubModule === 'workflows' ? "#38bdf8" : "#94a3b8", fontSize: "12px", fontWeight: "600", display: "flex", alignItems: "center", gap: "6px", cursor: "pointer" }}
+            >
+              <Layers size={14} />
+              <span>Operational Workflows</span>
+            </button>
+
+            <button
+              onClick={() => setActiveSubModule('gis')}
+              style={{ padding: "8px 14px", borderRadius: "6px", border: "none", backgroundColor: activeSubModule === 'gis' ? "#1e293b" : "transparent", color: activeSubModule === 'gis' ? "#38bdf8" : "#94a3b8", fontSize: "12px", fontWeight: "600", display: "flex", alignItems: "center", gap: "6px", cursor: "pointer" }}
+            >
+              <Map size={14} />
+              <span>GIS Resource Map</span>
+            </button>
           </div>
 
-          {/* Field Entry Actions */}
-          <div style={{ padding: "24px", backgroundColor: "#0f172a", border: "1px solid #1e293b", borderRadius: "16px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-              <h2 style={{ fontSize: "13px", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "1px", margin: 0, color: "#cbd5e1" }}>
-                Field Entry Actions
-              </h2>
-              <span style={{ fontSize: "10px", color: "#64748b", fontWeight: "500" }}>Clearance Active</span>
+          {/* Toast Notification */}
+          {actionSuccess && (
+            <div style={{ padding: "12px 16px", backgroundColor: "rgba(6, 78, 59, 0.9)", border: "1px solid #10b981", borderRadius: "10px", display: "flex", alignItems: "center", gap: "10px", color: "#34d399", fontSize: "12px", marginBottom: "20px" }}>
+              <CheckCircle2 size={16} />
+              <span>{actionSuccess}</span>
             </div>
+          )}
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "16px" }}>
-              {/* Submit News Draft Card */}
-              <div style={{ padding: "20px", backgroundColor: "#020617", border: "1px solid #1e293b", borderRadius: "12px", display: "flex", flexDirection: "column", justifyContent: "space-between", gap: "16px" }}>
-                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <PenTool size={16} style={{ color: "#fbbf24" }} />
-                    <h3 style={{ fontSize: "14px", fontWeight: "bold", margin: 0, color: "#fcd34d" }}>Submit News Draft</h3>
-                  </div>
-                  <p style={{ fontSize: "12px", color: "#94a3b8", margin: 0, lineHeight: "1.5" }}>
-                    Prepare press releases, field observations, or operational updates for supervisor approval before public release.
-                  </p>
-                </div>
-                <button
-                  onClick={() => setActiveModal('news')}
-                  style={{ width: "100%", padding: "10px", backgroundColor: "rgba(245, 158, 11, 0.1)", border: "1px solid rgba(245, 158, 11, 0.3)", borderRadius: "8px", color: "#fcd34d", fontSize: "12px", fontWeight: "600", cursor: "pointer" }}
-                >
-                  Compose Draft
-                </button>
-              </div>
-
-              {/* Upload Gallery Assets Card */}
-              <div style={{ padding: "20px", backgroundColor: "#020617", border: "1px solid #1e293b", borderRadius: "12px", display: "flex", flexDirection: "column", justifyContent: "space-between", gap: "16px" }}>
-                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <Upload size={16} style={{ color: "#fbbf24" }} />
-                    <h3 style={{ fontSize: "14px", fontWeight: "bold", margin: 0, color: "#fcd34d" }}>Upload Gallery Assets</h3>
-                  </div>
-                  <p style={{ fontSize: "12px", color: "#94a3b8", margin: 0, lineHeight: "1.5" }}>
-                    Add operational photographs, GIS captures, and field research media routed for Admin clearance.
-                  </p>
-                </div>
-                <button
-                  onClick={() => setActiveModal('gallery')}
-                  style={{ width: "100%", padding: "10px", backgroundColor: "#1e293b", border: "1px solid #334155", borderRadius: "8px", color: "#f8fafc", fontSize: "12px", fontWeight: "600", cursor: "pointer" }}
-                >
-                  Upload Media
-                </button>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* Dynamic Clickable Submissions Modal */}
-      {selectedCard && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 50, backgroundColor: "rgba(2, 6, 23, 0.85)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-          <div style={{ backgroundColor: "#0f172a", border: "1px solid #334155", width: "100%", maxWidth: "720px", maxHeight: "85vh", borderRadius: "16px", padding: "24px", display: "flex", flexDirection: "column", gap: "16px", overflow: "hidden" }}>
-            
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #1e293b", paddingBottom: "12px" }}>
+          {/* Profile Tab View */}
+          {activeTab === 'profile' ? (
+            <div style={{ padding: "24px", backgroundColor: "#0f172a", border: "1px solid #1e293b", borderRadius: "12px", display: "flex", flexDirection: "column", gap: "20px" }}>
               <div>
-                <h3 style={{ fontSize: "16px", fontWeight: "bold", color: "#ffffff", margin: 0, textTransform: "capitalize" }}>
-                  {cardConfig.find(c => c.key === selectedCard)?.label} Records
-                </h3>
-                <p style={{ fontSize: "11px", color: "#94a3b8", margin: "2px 0 0 0" }}>Click any item below to inspect full content details & tracking log</p>
+                <h2 style={{ fontSize: "18px", fontWeight: "800", color: "#ffffff", margin: "0 0 4px 0" }}>User Profile & Operational Settings</h2>
+                <p style={{ fontSize: "12px", color: "#94a3b8", margin: 0 }}>Manage your credentials and department assignment.</p>
               </div>
-              <button onClick={() => setSelectedCard(null)} style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer" }}>
-                <X size={20} />
-              </button>
-            </div>
 
-            <div style={{ position: "relative" }}>
-              <Search size={14} style={{ position: "absolute", left: "12px", top: "10px", color: "#64748b" }} />
-              <input
-                type="text"
-                placeholder="Search record content..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                style={{ width: "100%", backgroundColor: "#020617", border: "1px solid #1e293b", borderRadius: "8px", padding: "8px 12px 8px 34px", color: "#ffffff", fontSize: "12px", boxSizing: "border-box" }}
-              />
-            </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "20px" }}>
+                <div style={{ padding: "20px", backgroundColor: "#020617", border: "1px solid #1e293b", borderRadius: "12px", display: "flex", flexDirection: "column", alignItems: "center", gap: "16px" }}>
+                  <div style={{ width: "80px", height: "80px", borderRadius: "50%", border: "2px solid #f59e0b", backgroundColor: "#1e293b", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    {profileAvatar ? <img src={profileAvatar} alt="Avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <User size={40} style={{ color: "#64748b" }} />}
+                  </div>
+                  <label style={{ cursor: "pointer", padding: "8px 14px", backgroundColor: "#1e293b", borderRadius: "6px", color: "#ffffff", fontSize: "11px" }}>
+                    Upload Picture
+                    <input type="file" accept="image/*" onChange={handleProfileAvatarChange} style={{ display: "none" }} />
+                  </label>
+                </div>
 
-            {/* Clickable Items Feed */}
-            <div style={{ overflowY: "auto", display: "flex", flexDirection: "column", gap: "12px", paddingRight: "4px" }}>
-              {getActiveList().length > 0 ? (
-                getActiveList().map((item) => {
-                  const isExpanded = expandedRecordId === item.id;
+                <div style={{ padding: "20px", backgroundColor: "#020617", border: "1px solid #1e293b", borderRadius: "12px", display: "flex", flexDirection: "column", gap: "12px" }}>
+                  <div>
+                    <label style={{ fontSize: "11px", color: "#94a3b8", display: "block", marginBottom: "4px" }}>Officer Name</label>
+                    <input type="text" value={profileName} onChange={(e) => setProfileName(e.target.value)} style={{ width: "100%", backgroundColor: "#0f172a", border: "1px solid #1e293b", borderRadius: "6px", padding: "8px", color: "#ffffff", fontSize: "12px" }} />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: "11px", color: "#94a3b8", display: "block", marginBottom: "4px" }}>Department Division</label>
+                    <select value={selectedDepartment} onChange={(e) => setSelectedDepartment(e.target.value)} style={{ width: "100%", backgroundColor: "#0f172a", border: "1px solid #f59e0b", borderRadius: "6px", padding: "8px", color: "#ffffff", fontSize: "12px" }}>
+                      {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
+                    </select>
+                  </div>
+
+                  <button onClick={() => { setActionSuccess('Profile updated successfully.'); setTimeout(() => setActionSuccess(null), 4000); }} style={{ padding: "8px", backgroundColor: "#f59e0b", border: "none", borderRadius: "6px", color: "#020617", fontWeight: "bold", fontSize: "12px", cursor: "pointer", marginTop: "8px" }}>
+                    Save Profile
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* Dashboard View */
+            <>
+              {/* Metric Cards Feed */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "16px", marginBottom: "20px" }}>
+                {cardConfig.map((card) => {
+                  const Icon = card.icon;
                   return (
                     <div 
-                      key={item.id} 
-                      onClick={() => setExpandedRecordId(isExpanded ? null : item.id)}
-                      style={{ 
-                        padding: "16px", 
-                        backgroundColor: "#020617", 
-                        border: isExpanded ? "1px solid #f59e0b" : "1px solid #1e293b", 
-                        borderRadius: "12px", 
-                        cursor: "pointer",
-                        transition: "all 0.2s ease"
-                      }}
+                      key={card.key}
+                      onClick={() => { setSelectedCard(card.key as any); setSearchQuery(''); setExpandedRecordId(null); }}
+                      style={{ padding: "16px", backgroundColor: "#0f172a", border: selectedCard === card.key ? "1px solid #f59e0b" : "1px solid #1e293b", borderRadius: "12px", cursor: "pointer", display: "flex", flexDirection: "column", gap: "8px" }}
                     >
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px" }}>
-                        <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-                            <span style={{ fontSize: "14px", fontWeight: "bold", color: "#ffffff" }}>{item.title}</span>
-                            {item.approval_status === 'pending_approval' ? (
-                              <span style={{ fontSize: "9px", padding: "2px 6px", borderRadius: "10px", fontWeight: "bold", backgroundColor: "rgba(245, 158, 11, 0.15)", color: "#fbbf24", border: "1px solid rgba(245, 158, 11, 0.3)", display: "inline-flex", alignItems: "center", gap: "4px" }}>
-                                <Clock size={10} /> Pending Manager Approval
-                              </span>
-                            ) : (
-                              <span style={{ fontSize: "9px", padding: "2px 6px", borderRadius: "10px", fontWeight: "bold", backgroundColor: "rgba(16, 185, 129, 0.15)", color: "#34d399", border: "1px solid rgba(16, 185, 129, 0.3)", display: "inline-flex", alignItems: "center", gap: "4px" }}>
-                                <CheckCircle size={10} /> Approved / Public
-                              </span>
-                            )}
-                          </div>
-                          <p style={{ fontSize: "12px", color: "#cbd5e1", margin: 0, lineHeight: "1.4" }}>{item.subtitle}</p>
-                          {item.date && <span style={{ fontSize: "10px", color: "#64748b" }}>Date Logged: {item.date}</span>}
-                        </div>
-                        <div style={{ color: "#f59e0b" }}>
-                          {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                        </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span style={{ fontSize: "10px", color: "#94a3b8", fontWeight: "bold" }}>{card.label}</span>
+                        <Icon size={16} style={{ color: card.color }} />
                       </div>
-
-                      {/* Click Content Expansion View */}
-                      {isExpanded && (
-                        <div style={{ marginTop: "14px", paddingTop: "14px", borderTop: "1px dashed #334155", display: "flex", flexDirection: "column", gap: "10px" }}>
-                          <div>
-                            <span style={{ fontSize: "10px", textTransform: "uppercase", letterSpacing: "1px", color: "#fbbf24", fontWeight: "bold", display: "block", marginBottom: "4px" }}>
-                              Detailed Operational Report Body
-                            </span>
-                            <div style={{ backgroundColor: "#0f172a", padding: "12px", borderRadius: "8px", border: "1px solid #1e293b", color: "#f8fafc", fontSize: "12px", lineHeight: "1.6" }}>
-                              {item.full_content || item.subtitle}
-                            </div>
-                          </div>
-
-                          {item.file_url && (
-                            <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "11px", color: "#38bdf8", backgroundColor: "rgba(56, 189, 248, 0.1)", padding: "8px 12px", borderRadius: "6px", border: "1px solid rgba(56, 189, 248, 0.2)" }}>
-                              <Paperclip size={14} />
-                              <span>Attached Document: {item.file_url}</span>
-                            </div>
-                          )}
-                        </div>
-                      )}
+                      <span style={{ fontSize: "20px", fontWeight: "900", color: "#ffffff" }}>{card.val}</span>
+                      <span style={{ fontSize: "11px", color: "#fbbf24" }}>{card.note}</span>
                     </div>
                   );
-                })
-              ) : (
-                <div style={{ padding: "32px", textAlign: "center", color: "#64748b", fontSize: "12px" }}>
-                  No matching database records found.
+                })}
+              </div>
+
+              {/* Quick Actions Panel */}
+              <div style={{ padding: "20px", backgroundColor: "#0f172a", border: "1px solid #1e293b", borderRadius: "12px", marginBottom: "20px" }}>
+                <h3 style={{ fontSize: "12px", fontWeight: "bold", color: "#94a3b8", margin: "0 0 12px 0", textTransform: "uppercase" }}>Field Entry Actions</h3>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "12px" }}>
+                  <button onClick={() => setActiveModal('news')} style={{ padding: "12px", backgroundColor: "#020617", border: "1px solid #1e293b", borderRadius: "8px", color: "#fcd34d", fontSize: "12px", fontWeight: "600", display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+                    <PenTool size={16} />
+                    <span>Submit News Draft</span>
+                  </button>
+
+                  <button onClick={() => setActiveModal('gallery')} style={{ padding: "12px", backgroundColor: "#020617", border: "1px solid #1e293b", borderRadius: "8px", color: "#fcd34d", fontSize: "12px", fontWeight: "600", display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+                    <Upload size={16} />
+                    <span>Upload Gallery Assets</span>
+                  </button>
                 </div>
-              )}
-            </div>
+              </div>
+            </>
+          )}
 
-            <div style={{ display: "flex", justifyContent: "flex-end", paddingTop: "8px", borderTop: "1px solid #1e293b" }}>
-              <button onClick={() => setSelectedCard(null)} style={{ padding: "8px 16px", backgroundColor: "#1e293b", border: "none", borderRadius: "8px", color: "#f8fafc", fontSize: "12px", fontWeight: "600", cursor: "pointer" }}>
-                Close Overlay
+        </div>
+      </div>
+
+      {/* Floating Live Chat Trigger Button */}
+      <button
+        onClick={() => setIsChatOpen(!isChatOpen)}
+        style={{ position: "fixed", bottom: "24px", right: "24px", zIndex: 50, padding: "12px 20px", backgroundColor: "#f59e0b", border: "none", borderRadius: "30px", color: "#020617", fontWeight: "bold", fontSize: "12px", display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", boxShadow: "0 10px 25px -5px rgba(245, 158, 11, 0.4)" }}
+      >
+        <MessageSquare size={16} />
+        <span>Staff & Department Live Chat</span>
+      </button>
+
+      {/* Live Chat Modal Drawer */}
+      {isChatOpen && (
+        <div style={{ position: "fixed", bottom: "70px", right: "24px", zIndex: 50, width: "360px", height: "480px", backgroundColor: "#0f172a", border: "1px solid #334155", borderRadius: "16px", display: "flex", flexDirection: "column", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.5)", overflow: "hidden" }}>
+          <div style={{ padding: "12px 16px", backgroundColor: "#020617", borderBottom: "1px solid #1e293b", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontSize: "12px", fontWeight: "bold", color: "#ffffff" }}>NIRRMPT Staff Live Desk</span>
+            <button onClick={() => setIsChatOpen(false)} style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer" }}><X size={16} /></button>
+          </div>
+
+          <div style={{ padding: "8px 12px", backgroundColor: "#090d16", borderBottom: "1px solid #1e293b", display: "flex", gap: "8px" }}>
+            <button onClick={() => { setChatMode('private'); setActiveTarget(PRIVATE_CONTACTS[0]); }} style={{ flex: 1, padding: "6px", borderRadius: "6px", border: "none", backgroundColor: chatMode === 'private' ? "#f59e0b" : "#1e293b", color: chatMode === 'private' ? "#020617" : "#cbd5e1", fontSize: "10px", fontWeight: "bold", cursor: "pointer" }}>Private Chat</button>
+            <button onClick={() => { setChatMode('group'); setActiveTarget(GROUP_CHANNELS[0]); }} style={{ flex: 1, padding: "6px", borderRadius: "6px", border: "none", backgroundColor: chatMode === 'group' ? "#f59e0b" : "#1e293b", color: chatMode === 'group' ? "#020617" : "#cbd5e1", fontSize: "10px", fontWeight: "bold", cursor: "pointer" }}>Group Chat</button>
+          </div>
+
+          <div style={{ padding: "6px 12px", backgroundColor: "#0f172a", borderBottom: "1px solid #1e293b", display: "flex", gap: "6px", overflowX: "auto" }}>
+            {(chatMode === 'private' ? PRIVATE_CONTACTS : GROUP_CHANNELS).map((target) => (
+              <button key={target} onClick={() => setActiveTarget(target)} style={{ padding: "4px 8px", borderRadius: "4px", border: "none", backgroundColor: activeTarget === target ? "rgba(245, 158, 11, 0.2)" : "transparent", color: activeTarget === target ? "#fbbf24" : "#94a3b8", fontSize: "10px", cursor: "pointer", whitespace: "nowrap" }}>
+                {target}
               </button>
+            ))}
+          </div>
+
+          <div style={{ flex: 1, padding: "12px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "8px" }}>
+            {filteredChatMessages.map((msg) => (
+              <div key={msg.id} style={{ alignSelf: msg.sender === profileName ? "flex-end" : "flex-start", maxWidth: "80%" }}>
+                <div style={{ fontSize: "9px", color: "#64748b" }}>{msg.sender} • {msg.timestamp}</div>
+                <div style={{ padding: "8px 12px", borderRadius: "8px", backgroundColor: msg.sender === profileName ? "#f59e0b" : "#1e293b", color: msg.sender === profileName ? "#020617" : "#f8fafc", fontSize: "11px" }}>{msg.text}</div>
+              </div>
+            ))}
+          </div>
+
+          <form onSubmit={handleSendMessage} style={{ padding: "8px", backgroundColor: "#020617", borderTop: "1px solid #1e293b", display: "flex", gap: "6px" }}>
+            <input type="text" placeholder={`Message ${activeTarget}...`} value={chatMessageInput} onChange={(e) => setChatMessageInput(e.target.value)} style={{ flex: 1, backgroundColor: "#0f172a", border: "1px solid #1e293b", borderRadius: "6px", padding: "6px 10px", color: "#ffffff", fontSize: "11px" }} />
+            <button type="submit" style={{ padding: "6px 10px", backgroundColor: "#f59e0b", border: "none", borderRadius: "6px", color: "#020617", cursor: "pointer" }}><Send size={14} /></button>
+          </form>
+        </div>
+      )}
+
+      {/* Record Inspection Overlay Modal */}
+      {selectedCard && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 50, backgroundColor: "rgba(2, 6, 23, 0.85)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
+          <div style={{ backgroundColor: "#0f172a", border: "1px solid #334155", width: "100%", maxWidth: "680px", maxHeight: "80vh", borderRadius: "12px", padding: "20px", display: "flex", flexDirection: "column", gap: "12px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #1e293b", paddingBottom: "8px" }}>
+              <h3 style={{ fontSize: "14px", fontWeight: "bold", color: "#ffffff", margin: 0, textTransform: "capitalize" }}>{cardConfig.find(c => c.key === selectedCard)?.label} Records</h3>
+              <button onClick={() => setSelectedCard(null)} style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer" }}><X size={18} /></button>
             </div>
 
+            <input type="text" placeholder="Search record content..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} style={{ width: "100%", backgroundColor: "#020617", border: "1px solid #1e293b", borderRadius: "6px", padding: "8px", color: "#ffffff", fontSize: "12px" }} />
+
+            <div style={{ overflowY: "auto", display: "flex", flexDirection: "column", gap: "8px" }}>
+              {getActiveList().map((item) => (
+                <div key={item.id} onClick={() => setExpandedRecordId(expandedRecordId === item.id ? null : item.id)} style={{ padding: "12px", backgroundColor: "#020617", border: "1px solid #1e293b", borderRadius: "8px", cursor: "pointer" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: "13px", fontWeight: "bold", color: "#ffffff" }}>{item.title}</span>
+                    <span style={{ fontSize: "10px", color: "#fbbf24" }}>{item.approval_status || 'Active'}</span>
+                  </div>
+                  <p style={{ fontSize: "11px", color: "#94a3b8", margin: "4px 0 0 0" }}>{item.subtitle}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
 
-      {/* UPDATED: Enterprise Live Chat Feature with Group & Private Switcher */}
-      <div style={{ position: "fixed", bottom: "24px", right: "24px", zIndex: 40 }}>
-        {!isChatOpen ? (
-          <button
-            onClick={() => setIsChatOpen(true)}
-            style={{ padding: "12px 18px", backgroundColor: "#f59e0b", border: "none", borderRadius: "30px", color: "#020617", fontWeight: "bold", fontSize: "13px", display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", boxShadow: "0 10px 25px -5px rgba(245, 158, 11, 0.4)" }}
-          >
-            <MessageSquare size={18} />
-            <span>Staff Live Chat</span>
-          </button>
-        ) : (
-          <div style={{ width: "380px", height: "500px", backgroundColor: "#0f172a", border: "1px solid #334155", borderRadius: "16px", display: "flex", flexDirection: "column", boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.5)", overflow: "hidden" }}>
-            
-            {/* Chat Drawer Header */}
-            <div style={{ padding: "12px 16px", backgroundColor: "#020617", borderBottom: "1px solid #1e293b", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <Circle size={8} style={{ color: "#10b981", fill: "#10b981" }} />
-                <span style={{ fontSize: "13px", fontWeight: "bold", color: "#ffffff" }}>NIRRMPT Staff Live Desk</span>
-              </div>
-              <button onClick={() => setIsChatOpen(false)} style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer" }}>
-                <X size={16} />
-              </button>
-            </div>
-
-            {/* Mode Switcher: Private Chat vs Group Chat */}
-            <div style={{ padding: "8px 12px", backgroundColor: "#090d16", borderBottom: "1px solid #1e293b", display: "flex", gap: "8px" }}>
-              <button
-                onClick={() => {
-                  setChatMode('private');
-                  setActiveTarget(PRIVATE_CONTACTS[0]);
-                }}
-                style={{ flex: 1, padding: "6px", borderRadius: "8px", border: "none", backgroundColor: chatMode === 'private' ? "#f59e0b" : "#1e293b", color: chatMode === 'private' ? "#020617" : "#cbd5e1", fontSize: "11px", fontWeight: "bold", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", cursor: "pointer" }}
-              >
-                <UserCheck size={14} />
-                <span>Private Chat</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  setChatMode('group');
-                  setActiveTarget(GROUP_CHANNELS[0]);
-                }}
-                style={{ flex: 1, padding: "6px", borderRadius: "8px", border: "none", backgroundColor: chatMode === 'group' ? "#f59e0b" : "#1e293b", color: chatMode === 'group' ? "#020617" : "#cbd5e1", fontSize: "11px", fontWeight: "bold", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", cursor: "pointer" }}
-              >
-                <Users size={14} />
-                <span>Group Chat</span>
-              </button>
-            </div>
-
-            {/* Recipient Channel Selector based on active mode */}
-            <div style={{ padding: "8px 12px", backgroundColor: "#0f172a", borderBottom: "1px solid #1e293b", display: "flex", gap: "6px", overflowX: "auto" }}>
-              {(chatMode === 'private' ? PRIVATE_CONTACTS : GROUP_CHANNELS).map((target) => (
-                <button
-                  key={target}
-                  onClick={() => setActiveTarget(target)}
-                  style={{ padding: "4px 8px", borderRadius: "6px", border: "none", backgroundColor: activeTarget === target ? "rgba(245, 158, 11, 0.2)" : "transparent", color: activeTarget === target ? "#fbbf24" : "#94a3b8", fontSize: "10px", fontWeight: "bold", cursor: "pointer", whitespace: "nowrap" }}
-                >
-                  {target}
-                </button>
-              ))}
-            </div>
-
-            {/* Chat Body */}
-            <div style={{ flex: 1, padding: "12px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "10px" }}>
-              {filteredChatMessages.length > 0 ? (
-                filteredChatMessages.map((msg) => (
-                  <div key={msg.id} style={{ alignSelf: msg.sender === profileName ? "flex-end" : "flex-start", maxWidth: "80%" }}>
-                    <div style={{ fontSize: "9px", color: "#64748b", marginBottom: "2px" }}>{msg.sender} • {msg.timestamp}</div>
-                    <div style={{ padding: "8px 12px", borderRadius: "10px", backgroundColor: msg.sender === profileName ? "#f59e0b" : "#1e293b", color: msg.sender === profileName ? "#020617" : "#f8fafc", fontSize: "11px", lineHeight: "1.4", fontWeight: msg.sender === profileName ? "600" : "400" }}>
-                      {msg.text}
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div style={{ margin: "auto", textAlign: "center", color: "#64748b", fontSize: "11px" }}>
-                  No messages yet in {chatMode} chat: <strong>{activeTarget}</strong>.
-                </div>
-              )}
-            </div>
-
-            {/* Chat Input */}
-            <form onSubmit={handleSendMessage} style={{ padding: "10px", backgroundColor: "#020617", borderTop: "1px solid #1e293b", display: "flex", gap: "8px" }}>
-              <input
-                type="text"
-                placeholder={`Message ${activeTarget}...`}
-                value={chatMessageInput}
-                onChange={(e) => setChatMessageInput(e.target.value)}
-                style={{ flex: 1, backgroundColor: "#0f172a", border: "1px solid #1e293b", borderRadius: "8px", padding: "8px 12px", color: "#ffffff", fontSize: "11px", outline: "none" }}
-              />
-              <button type="submit" style={{ padding: "8px 12px", backgroundColor: "#f59e0b", border: "none", borderRadius: "8px", color: "#020617", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <Send size={14} />
-              </button>
-            </form>
-
-          </div>
-        )}
-      </div>
-
-      {/* Upload/News Action Modals */}
+      {/* Action Modals (News / Gallery) */}
       {activeModal && (
         <div style={{ position: "fixed", inset: 0, zIndex: 50, backgroundColor: "rgba(2, 6, 23, 0.8)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-          <div style={{ backgroundColor: "#0f172a", border: "1px solid #1e293b", width: "100%", maxWidth: "520px", borderRadius: "16px", padding: "24px", margin: "0 auto", display: "flex", flexDirection: "column", gap: "16px" }}>
-            
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #1e293b", paddingBottom: "12px" }}>
-              <div>
-                <h3 style={{ fontSize: "14px", fontWeight: "bold", color: "#ffffff", margin: 0, display: "flex", alignItems: "center", gap: "8px" }}>
-                  {activeModal === 'news' ? <PenTool size={16} style={{ color: "#fbbf24" }} /> : <Upload size={16} style={{ color: "#fbbf24" }} />}
-                  {activeModal === 'news' ? 'Submit Field News Draft' : 'Upload Gallery Asset'}
-                </h3>
-                <p style={{ fontSize: "10px", color: "#fbbf24", margin: "2px 0 0 0" }}>Requires Manager / Admin approval before public release</p>
-              </div>
-              <button onClick={() => setActiveModal(null)} style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer" }}>
-                <X size={18} />
-              </button>
+          <div style={{ backgroundColor: "#0f172a", border: "1px solid #1e293b", width: "100%", maxWidth: "480px", borderRadius: "12px", padding: "20px", display: "flex", flexDirection: "column", gap: "12px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #1e293b", paddingBottom: "8px" }}>
+              <h3 style={{ fontSize: "14px", fontWeight: "bold", color: "#ffffff", margin: 0 }}>{activeModal === 'news' ? 'Submit Field News Draft' : 'Upload Gallery Asset'}</h3>
+              <button onClick={() => setActiveModal(null)} style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer" }}><X size={16} /></button>
             </div>
 
             {activeModal === 'news' ? (
-              <form onSubmit={handleNewsSubmit} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                <div>
-                  <label style={{ display: "block", fontSize: "11px", fontWeight: "600", color: "#cbd5e1", marginBottom: "4px" }}>Report Title</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g., Regional Resource Monitoring Update - Q3"
-                    value={newsTitle}
-                    onChange={(e) => setNewsTitle(e.target.value)}
-                    style={{ width: "100%", backgroundColor: "#020617", border: "1px solid #1e293b", borderRadius: "8px", padding: "8px 12px", color: "#ffffff", fontSize: "12px", boxSizing: "border-box" }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: "block", fontSize: "11px", fontWeight: "600", color: "#cbd5e1", marginBottom: "4px" }}>Report Content</label>
-                  <textarea
-                    required
-                    rows={4}
-                    placeholder="Provide detailed field observations..."
-                    value={newsContent}
-                    onChange={(e) => setNewsContent(e.target.value)}
-                    style={{ width: "100%", backgroundColor: "#020617", border: "1px solid #1e293b", borderRadius: "8px", padding: "8px 12px", color: "#ffffff", fontSize: "12px", boxSizing: "border-box", resize: "none" }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ display: "block", fontSize: "11px", fontWeight: "600", color: "#cbd5e1", marginBottom: "4px" }}>Attach Supporting Field Document (Optional)</label>
-                  <input
-                    type="file"
-                    onChange={(e) => setNewsFile(e.target.files ? e.target.files[0] : null)}
-                    style={{ width: "100%", backgroundColor: "#020617", border: "1px solid #1e293b", borderRadius: "8px", padding: "8px 12px", color: "#94a3b8", fontSize: "11px", boxSizing: "border-box" }}
-                  />
-                </div>
-
-                <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", paddingTop: "8px" }}>
-                  <button type="button" onClick={() => setActiveModal(null)} style={{ padding: "8px 14px", backgroundColor: "#1e293b", border: "none", borderRadius: "8px", color: "#cbd5e1", fontSize: "12px", fontWeight: "600", cursor: "pointer" }}>Cancel</button>
-                  <button type="submit" disabled={submitting} style={{ padding: "8px 16px", backgroundColor: "#f59e0b", border: "none", borderRadius: "8px", color: "#020617", fontSize: "12px", fontWeight: "bold", cursor: "pointer" }}>
-                    {submitting ? 'Routing for Approval...' : 'Submit Draft for Approval'}
-                  </button>
-                </div>
+              <form onSubmit={handleNewsSubmit} style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                <input type="text" required placeholder="Report Title" value={newsTitle} onChange={(e) => setNewsTitle(e.target.value)} style={{ width: "100%", backgroundColor: "#020617", border: "1px solid #1e293b", borderRadius: "6px", padding: "8px", color: "#ffffff", fontSize: "12px" }} />
+                <textarea required rows={3} placeholder="Report Content" value={newsContent} onChange={(e) => setNewsContent(e.target.value)} style={{ width: "100%", backgroundColor: "#020617", border: "1px solid #1e293b", borderRadius: "6px", padding: "8px", color: "#ffffff", fontSize: "12px" }} />
+                <button type="submit" disabled={submitting} style={{ padding: "8px", backgroundColor: "#f59e0b", border: "none", borderRadius: "6px", color: "#020617", fontWeight: "bold", fontSize: "12px", cursor: "pointer" }}>{submitting ? 'Submitting...' : 'Submit Draft'}</button>
               </form>
             ) : (
-              <form onSubmit={handleGallerySubmit} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                <div>
-                  <label style={{ display: "block", fontSize: "11px", fontWeight: "600", color: "#cbd5e1", marginBottom: "4px" }}>Asset Caption</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g., Soil Sample Testing Site - Sector 4"
-                    value={mediaCaption}
-                    onChange={(e) => setMediaCaption(e.target.value)}
-                    style={{ width: "100%", backgroundColor: "#020617", border: "1px solid #1e293b", borderRadius: "8px", padding: "8px 12px", color: "#ffffff", fontSize: "12px", boxSizing: "border-box" }}
-                  />
-                </div>
-                
-                <div>
-                  <label style={{ display: "block", fontSize: "11px", fontWeight: "600", color: "#cbd5e1", marginBottom: "4px" }}>Select Asset File</label>
-                  <div style={{ border: "2px dashed #1e293b", borderRadius: "12px", padding: "16px", backgroundColor: "#020617", textAlign: "center", position: "relative" }}>
-                    <Upload size={24} style={{ color: "#fbbf24", margin: "0 auto 6px auto", display: "block" }} />
-                    <p style={{ fontSize: "11px", color: "#cbd5e1", margin: 0, fontWeight: "600" }}>
-                      {mediaFile ? mediaFile.name : 'Click to select or drag photo/video'}
-                    </p>
-                    <input
-                      type="file"
-                      required
-                      accept="image/*,video/*"
-                      onChange={(e) => setMediaFile(e.target.files ? e.target.files[0] : null)}
-                      style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer", width: "100%", height: "100%" }}
-                    />
-                  </div>
-                </div>
-
-                <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", paddingTop: "8px" }}>
-                  <button type="button" onClick={() => setActiveModal(null)} style={{ padding: "8px 14px", backgroundColor: "#1e293b", border: "none", borderRadius: "8px", color: "#cbd5e1", fontSize: "12px", fontWeight: "600", cursor: "pointer" }}>Cancel</button>
-                  <button
-                    type="submit"
-                    disabled={submitting}
-                    style={{ padding: "8px 16px", backgroundColor: "#f59e0b", border: "none", borderRadius: "8px", color: "#020617", fontSize: "12px", fontWeight: "bold", cursor: "pointer" }}
-                  >
-                    {submitting ? 'Uploading...' : 'Upload & Send for Clearance'}
-                  </button>
-                </div>
+              <form onSubmit={handleGallerySubmit} style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                <input type="text" required placeholder="Asset Caption" value={mediaCaption} onChange={(e) => setMediaCaption(e.target.value)} style={{ width: "100%", backgroundColor: "#020617", border: "1px solid #1e293b", borderRadius: "6px", padding: "8px", color: "#ffffff", fontSize: "12px" }} />
+                <input type="file" required accept="image/*,video/*" onChange={(e) => setMediaFile(e.target.files ? e.target.files[0] : null)} style={{ width: "100%", color: "#cbd5e1", fontSize: "11px" }} />
+                <button type="submit" disabled={submitting} style={{ padding: "8px", backgroundColor: "#f59e0b", border: "none", borderRadius: "6px", color: "#020617", fontWeight: "bold", fontSize: "12px", cursor: "pointer" }}>{submitting ? 'Uploading...' : 'Upload Asset'}</button>
               </form>
             )}
           </div>

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
+import GlobalChatbot from "@/components/GlobalChatbot";
 
 export const metadata: Metadata = {
   title: "NIRRMPT Official Portal",
@@ -32,6 +33,9 @@ export default function RootLayout({
           {children}
         </main>
         
+        {/* Global Floating Chatbot */}
+        <GlobalChatbot />
+
         {/* Global Footer */}
         <Footer />
       </body>

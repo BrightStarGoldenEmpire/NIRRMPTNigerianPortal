@@ -1,0 +1,92 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  CITIZEN
+  RESEARCHER
+  STAFF_FIELD_DESK
+  DIRECTORATE_OPS
+  SUPER_ADMIN
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  password      String
+  role          Role      @default(CITIZEN)
+  department    String?
+  avatarUrl     String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  trainings     TrainingRegistration[]
+  documents     Document[]
+  eiaSubmissions EIAReport[]
+  auditLogs     AuditLog[]
+}
+
+model Document {
+  id          String   @id @default(cuid())
+  title       String
+  category    String   // Journal, Policy Brief, Research Paper, FOI
+  fileUrl     String
+  fileType    String
+  authorId    String
+  uploadedBy  User     @relation(fields: [authorId], references: [id])
+  createdAt   DateTime @default(now())
+}
+
+model TrainingRegistration {
+  id          String   @id @default(cuid())
+  courseTitle String
+  fullName    String
+  email       String
+  phone       String
+  status      String   @default("Pending")
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+  createdAt   DateTime @default(now())
+}
+
+model RegenerativeResource {
+  id            String   @id @default(cuid())
+  name          String
+  type          String   // Soil, Water, Forest, Mineral, Renewable
+  state         String
+  lga           String
+  latitude      Float
+  longitude     Float
+  depletionRate Float
+  regenRate     Float
+  createdAt     DateTime @default(now())
+}
+
+model EIAReport {
+  id          String   @id @default(cuid())
+  projectName String
+  description String
+  location    String
+  fileUrl     String
+  status      String   @default("Under Review")
+  applicantId String
+  applicant   User     @relation(fields: [applicantId], references: [id])
+  createdAt   DateTime @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String
+  details   String
+  ipAddress String?
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+}

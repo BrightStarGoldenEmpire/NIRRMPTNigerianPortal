@@ -11,9 +11,11 @@ export default function Navbar() {
     { name: 'About Us', href: '/about' },
     { name: 'Leadership & Board', href: '/leadership' },
     { name: 'Departments', href: '/department' },
-    { name: 'News', href: '/events' },
+    { name: 'News', href: '/news' },
     { name: 'Events', href: '/events' },
     { name: 'Gallery', href: '/gallery' },
+    { name: 'FOI', href: '/foi' },
+    { name: 'Training', href: '/training' },
     { name: 'Contact', href: '/contact' },
   ];
 
@@ -41,10 +43,10 @@ export default function Navbar() {
 
       {/* Main Navigation Bar */}
       <div className="bg-white border-b border-slate-200 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-20 gap-2">
           
           {/* Logo & Agency Title */}
-          <Link href="/" className="flex items-center gap-3 group">
+          <Link href="/" className="flex items-center gap-3 group shrink-0">
             <div className="h-12 w-auto max-w-[140px] flex items-center justify-center shrink-0 overflow-hidden">
               <img 
                 src="/images/logo.png" 
@@ -53,22 +55,22 @@ export default function Navbar() {
               />
             </div>
             <div className="flex flex-col">
-              <span className="font-extrabold text-slate-900 tracking-tight text-base leading-tight">
+              <span className="font-extrabold text-slate-900 tracking-tight text-base leading-tight whitespace-nowrap">
                 NIRRMPT Nigeria
               </span>
-              <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">
+              <span className="text-[8px] sm:text-[9px] font-bold text-slate-500 uppercase tracking-widest whitespace-nowrap">
                 REGENERATIVE RESOURCE MANAGEMENT & PROTECTION
               </span>
             </div>
           </Link>
 
-          {/* Desktop Links */}
-          <nav className="hidden lg:flex items-center gap-6">
+          {/* Desktop Links (Optimized spacing to prevent multi-line wrap) */}
+          <nav className="hidden xl:flex items-center gap-3.5 lg:gap-4 shrink">
             {navLinks.map((link) => (
               <Link
                 key={link.name}
                 href={link.href}
-                className="text-xs font-semibold text-slate-700 hover:text-[#0F392B] transition-colors"
+                className="text-[12px] xl:text-[13px] font-semibold text-slate-700 hover:text-[#0F392B] transition-colors whitespace-nowrap"
               >
                 {link.name}
               </Link>
@@ -76,10 +78,10 @@ export default function Navbar() {
           </nav>
 
           {/* Action Button */}
-          <div className="hidden sm:flex items-center gap-3">
+          <div className="hidden sm:flex items-center gap-3 shrink-0">
             <Link
               href="/portal/login"
-              className="bg-[#0F392B] hover:bg-emerald-900 text-white font-bold px-4 py-2 rounded-md text-xs transition shadow-sm flex items-center gap-2"
+              className="bg-[#0F392B] hover:bg-emerald-900 text-white font-bold px-3.5 py-2 rounded-md text-xs transition shadow-sm flex items-center gap-2 whitespace-nowrap"
             >
               <i className="fa-solid fa-lock text-[10px]"></i>
               Portal Login
@@ -89,16 +91,16 @@ export default function Navbar() {
           {/* Mobile Menu Toggle */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="lg:hidden p-2 rounded-lg text-slate-700 hover:bg-slate-100 transition"
+            className="xl:hidden p-2 rounded-lg text-slate-700 hover:bg-slate-100 transition shrink-0"
             aria-label="Toggle Menu"
           >
             <i className={`fa-solid ${mobileMenuOpen ? 'fa-xmark' : 'fa-bars'} text-lg`}></i>
           </button>
         </div>
 
-        {/* Mobile Dropdown */}
+        {/* Mobile & Tablet Dropdown */}
         {mobileMenuOpen && (
-          <div className="lg:hidden bg-white border-t border-slate-100 py-3 px-4 space-y-1">
+          <div className="xl:hidden bg-white border-t border-slate-100 py-3 px-4 space-y-1">
             {navLinks.map((link) => (
               <Link
                 key={link.name}

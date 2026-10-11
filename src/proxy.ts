@@ -32,8 +32,39 @@ export async function proxy(request: NextRequest) {
     },
   });
 
-  // Refresh session tokens seamlessly without enforcing blocking redirects
-  await supabase.auth.getUser();
+  // Refresh session tokens seamlessly
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const pathname = request.nextUrl.pathname;
+
+  // Enforce Role-Based Access Control on Dashboard and Admin Routes
+  if (pathname.includes("/dashboard/admin") || pathname.startsWith("/admin")) {
+    if (!user) {
+      return NextResponse.redirect(new URL("/login", request.url));
+    }
+
+    const userRole = user.user_metadata?.role || "CITIZEN";
+
+    if (pathname.includes("/super") && userRole !== "SUPER_ADMIN") {
+      return NextResponse.redirect(new URL("/dashboard/admin", request.url));
+    }
+    if (
+      pathname.includes("/directorate") &&
+      !["DIRECTORATE_OPS", "SUPER_ADMIN"].includes(userRole)
+    ) {
+      return NextResponse.redirect(new URL("/dashboard/admin", request.url));
+    }
+    if (
+      pathname.includes("/field-desk") &&
+      !["STAFF_FIELD_DESK", "DIRECTORATE_OPS", "SUPER_ADMIN"].includes(
+        userRole
+      )
+    ) {
+      return NextResponse.redirect(new URL("/dashboard/admin", request.url));
+    }
+  }
 
   return supabaseResponse;
 }

@@ -14,26 +14,18 @@ import {
   CheckCircle2, 
   X,
   ShieldCheck,
-  Search,
-  ArrowLeft,
-  LogOut,
-  User,
-  Settings,
-  Paperclip,
-  Clock,
-  CheckCircle,
   MessageSquare,
   Send,
   Building2,
-  ChevronDown,
-  ChevronUp,
   Circle,
   Users,
-  UserCheck,
-  LayoutDashboard,
   Briefcase,
   Layers,
-  Map
+  Map,
+  Award,
+  Calendar,
+  BookOpen,
+  User
 } from 'lucide-react';
 
 interface StaffProfile {
@@ -54,6 +46,17 @@ interface DetailRecord {
   file_url?: string;
   approval_status?: 'pending_approval' | 'approved' | 'rejected';
   full_content?: string;
+}
+
+interface TrainingProgram {
+  id: string;
+  title: string;
+  category: string;
+  date: string;
+  location: string;
+  seatsLeft: number;
+  description: string;
+  flyerUrl: string;
 }
 
 interface ChatMessage {
@@ -96,16 +99,61 @@ export default function StaffDashboard() {
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
 
-  // Active Sidebar Role Tab & Sub-module
+  // Active Sidebar Role Tab & Sub-module (Added training module support)
   const [activeRole, setActiveRole] = useState<'public' | 'staff' | 'directorate' | 'superadmin'>('staff');
-  const [activeSubModule, setActiveSubModule] = useState<'overview' | 'workflows' | 'gis'>('overview');
+  const [activeSubModule, setActiveSubModule] = useState<'overview' | 'workflows' | 'gis' | 'training'>('overview');
   const [activeTab, setActiveTab] = useState<'dashboard' | 'profile'>('dashboard');
 
   // Profile Form States
   const [profileName, setProfileName] = useState('Staff Officer');
   const [selectedDepartment, setSelectedDepartment] = useState(DEPARTMENTS[0]);
   const [profileAvatar, setProfileAvatar] = useState<string | null>(null);
-  const [emailNotifications, setEmailNotifications] = useState(true);
+
+  // Training Module States
+  const [selectedProgram, setSelectedProgram] = useState<TrainingProgram | null>(null);
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [registrationSuccessId, setRegistrationSuccessId] = useState<string | null>(null);
+  const [trainingFormData, setTrainingFormData] = useState({
+    fullName: '',
+    email: '',
+    phone: '',
+    organization: '',
+    designation: '',
+    experienceLevel: 'Mid-Level',
+  });
+
+  const trainingPrograms: TrainingProgram[] = [
+    {
+      id: 'TR-2026-01',
+      title: 'Environmental Impact Assessment (EIA) Certification 2026',
+      category: 'Regulatory Compliance',
+      date: 'November 12 - 15, 2026',
+      location: 'Port Harcourt / Hybrid Stream',
+      seatsLeft: 14,
+      description: 'Comprehensive statutory certification covering EIA auditing frameworks under federal guidelines and NDPR principles.',
+      flyerUrl: '/assets/images/training-eia-2026.png',
+    },
+    {
+      id: 'TR-2026-02',
+      title: 'GIS Mapping & Resource Management Workshop',
+      category: 'Spatial Analytics',
+      date: 'December 03 - 05, 2026',
+      location: 'Abuja Directorate Center & Virtual',
+      seatsLeft: 8,
+      description: 'Hands-on geospatial mapping workflows, satellite terrain monitoring, and automated database resource tracking.',
+      flyerUrl: '/assets/images/training-gis-2026.png',
+    },
+    {
+      id: 'TR-2026-03',
+      title: 'Regenerative Soil & Ecosystem Protection Masterclass',
+      category: 'Field Operations',
+      date: 'January 20 - 22, 2027',
+      location: 'Field Desk Operations Base, Rivers State',
+      seatsLeft: 22,
+      description: 'Advanced methodologies for soil remediation, natural asset protection, and field data telemetry reporting.',
+      flyerUrl: '/assets/images/training-soil-2027.png',
+    },
+  ];
 
   // Dynamic Card Data Stores
   const [submissionsList, setSubmissionsList] = useState<DetailRecord[]>([]);
@@ -390,6 +438,23 @@ export default function StaffDashboard() {
     }
   };
 
+  const handleTrainingInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setTrainingFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleTrainingRegisterSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsRegistering(true);
+    setRegistrationSuccessId(null);
+
+    setTimeout(() => {
+      const trackingCode = `CERT-REG-${Math.floor(100000 + Math.random() * 900000)}`;
+      setIsRegistering(false);
+      setRegistrationSuccessId(trackingCode);
+    }, 1200);
+  };
+
   const handleProfileAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
@@ -471,6 +536,8 @@ export default function StaffDashboard() {
           <button onClick={() => router.push('/about')} style={{ background: "none", border: "none", color: "#cbd5e1", fontSize: "12px", cursor: "pointer" }}>About Us</button>
           <button onClick={() => router.push('/leadership')} style={{ background: "none", border: "none", color: "#cbd5e1", fontSize: "12px", cursor: "pointer" }}>Leadership & Board</button>
           <button onClick={() => router.push('/departments')} style={{ background: "none", border: "none", color: "#cbd5e1", fontSize: "12px", cursor: "pointer" }}>Departments</button>
+          <button onClick={() => router.push('/foi')} style={{ background: "none", border: "none", color: "#cbd5e1", fontSize: "12px", cursor: "pointer" }}>FOI</button>
+          <button onClick={() => router.push('/training')} style={{ background: "none", border: "none", color: "#cbd5e1", fontSize: "12px", cursor: "pointer" }}>Training</button>
           <button onClick={() => router.push('/contact')} style={{ background: "none", border: "none", color: "#cbd5e1", fontSize: "12px", cursor: "pointer" }}>Contact</button>
 
           <button 
@@ -485,7 +552,6 @@ export default function StaffDashboard() {
             onClick={handleSignOut}
             style={{ padding: "8px 16px", backgroundColor: "rgba(239, 68, 68, 0.1)", border: "1px solid rgba(239, 68, 68, 0.4)", borderRadius: "8px", color: "#f87171", fontSize: "12px", fontWeight: "600", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}
           >
-            <LogOut size={14} />
             <span>Sign Out</span>
           </button>
         </div>
@@ -558,13 +624,13 @@ export default function StaffDashboard() {
             </button>
           </div>
 
-          {/* Sub-Module Secondary Navigation */}
-          <div style={{ display: "flex", gap: "12px", marginBottom: "20px", borderBottom: "1px solid #1e293b", paddingBottom: "12px" }}>
+          {/* Sub-Module Secondary Navigation (Includes Training Module Tab) */}
+          <div style={{ display: "flex", gap: "12px", marginBottom: "20px", borderBottom: "1px solid #1e293b", paddingBottom: "12px", flexWrap: "wrap" }}>
             <button
               onClick={() => setActiveSubModule('overview')}
               style={{ padding: "8px 14px", borderRadius: "6px", border: "none", backgroundColor: activeSubModule === 'overview' ? "#1e293b" : "transparent", color: activeSubModule === 'overview' ? "#38bdf8" : "#94a3b8", fontSize: "12px", fontWeight: "600", display: "flex", alignItems: "center", gap: "6px", cursor: "pointer" }}
             >
-              <LayoutDashboard size={14} />
+              <FileText size={14} />
               <span>Overview Dashboard</span>
             </button>
 
@@ -582,6 +648,14 @@ export default function StaffDashboard() {
             >
               <Map size={14} />
               <span>GIS Resource Map</span>
+            </button>
+
+            <button
+              onClick={() => setActiveSubModule('training')}
+              style={{ padding: "8px 14px", borderRadius: "6px", border: "none", backgroundColor: activeSubModule === 'training' ? "#1e293b" : "transparent", color: activeSubModule === 'training' ? "#38bdf8" : "#94a3b8", fontSize: "12px", fontWeight: "600", display: "flex", alignItems: "center", gap: "6px", cursor: "pointer" }}
+            >
+              <Award size={14} />
+              <span>Training & Certifications</span>
             </button>
           </div>
 
@@ -630,6 +704,114 @@ export default function StaffDashboard() {
                   </button>
                 </div>
               </div>
+            </div>
+          ) : activeSubModule === 'training' ? (
+            /* Training & Certifications Sub-Module View */
+            <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+              <div style={{ padding: "20px", backgroundColor: "#0f172a", border: "1px solid #1e293b", borderRadius: "12px" }}>
+                <span style={{ fontSize: "10px", fontWeight: "bold", color: "#10b981", textTransform: "uppercase", letterSpacing: "1px" }}>Professional Development Directorate</span>
+                <h3 style={{ fontSize: "20px", fontWeight: "800", color: "#ffffff", margin: "4px 0 8px 0" }}>Staff Training & Workshop Certifications</h3>
+                <p style={{ fontSize: "12px", color: "#94a3b8", margin: 0 }}>Enroll in official NIRRMPT environmental certifications, spatial mapping workshops, and regulatory compliance masterclasses.</p>
+              </div>
+
+              {/* Training Programs Grid with Flyer previews */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "20px" }}>
+                {trainingPrograms.map((prog) => (
+                  <div key={prog.id} style={{ backgroundColor: "#0f172a", border: "1px solid #1e293b", borderRadius: "12px", overflow: "hidden", display: "flex", flexDirection: "column", justifyContent: "between" }}>
+                    <div>
+                      {/* Program Flyer Banner Image Section */}
+                      <div style={{ position: "relative", height: "160px", width: "100%", backgroundColor: "#020617", overflow: "hidden" }}>
+                        <img 
+                          src={prog.flyerUrl} 
+                          alt={prog.title} 
+                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                          onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }}
+                        />
+                        <div style={{ position: "absolute", bottom: "12px", left: "12px" }}>
+                          <span style={{ fontSize: "10px", fontWeight: "bold", textTransform: "uppercase", padding: "4px 8px", backgroundColor: "#065f46", color: "#ffffff", borderRadius: "12px" }}>
+                            {prog.category}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "8px" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px" }}>
+                          <span style={{ color: "#34d399", fontWeight: "bold" }}>{prog.seatsLeft} Seats Left</span>
+                          <span style={{ color: "#64748b" }}>{prog.id}</span>
+                        </div>
+
+                        <h4 style={{ fontSize: "14px", fontWeight: "bold", color: "#ffffff", margin: 0 }}>{prog.title}</h4>
+                        <p style={{ fontSize: "11px", color: "#94a3b8", margin: 0, lineHeight: "1.4" }}>{prog.description}</p>
+
+                        <div style={{ fontSize: "11px", color: "#cbd5e1", marginTop: "8px", display: "flex", flexDirection: "column", gap: "4px" }}>
+                          <div>📅 {prog.date}</div>
+                          <div>📍 {prog.location}</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ padding: "16px", paddingTop: 0 }}>
+                      <button
+                        onClick={() => { setSelectedProgram(prog); setRegistrationSuccessId(null); }}
+                        style={{ width: "100%", padding: "10px", backgroundColor: "#10b981", border: "none", borderRadius: "8px", color: "#020617", fontWeight: "bold", fontSize: "12px", cursor: "pointer" }}
+                      >
+                        Select & Register
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Interactive Registration Modal for Selected Program */}
+              {selectedProgram && (
+                <div style={{ padding: "24px", backgroundColor: "#0f172a", border: "2px solid #10b981", borderRadius: "12px", display: "flex", flexDirection: "column", gap: "16px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #1e293b", paddingBottom: "12px" }}>
+                    <div>
+                      <span style={{ fontSize: "10px", color: "#34d399", fontWeight: "bold", textTransform: "uppercase" }}>Selected Training Module</span>
+                      <h4 style={{ fontSize: "16px", fontWeight: "bold", color: "#ffffff", margin: "2px 0 0 0" }}>{selectedProgram.title}</h4>
+                      <p style={{ fontSize: "11px", color: "#94a3b8", margin: 0 }}>{selectedProgram.date} • {selectedProgram.location}</p>
+                    </div>
+                    <button onClick={() => setSelectedProgram(null)} style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer" }}><X size={18} /></button>
+                  </div>
+
+                  {registrationSuccessId ? (
+                    <div style={{ padding: "16px", backgroundColor: "rgba(6, 78, 59, 0.4)", border: "1px solid #10b981", borderRadius: "8px", color: "#34d399", display: "flex", flexDirection: "column", gap: "8px" }}>
+                      <h4 style={{ fontSize: "14px", fontWeight: "bold", margin: 0 }}>Training Application Successfully Submitted!</h4>
+                      <p style={{ fontSize: "12px", margin: 0 }}>Your registration token is: <strong style={{ color: "#ffffff", backgroundColor: "#020617", padding: "2px 6px", borderRadius: "4px" }}>{registrationSuccessId}</strong></p>
+                      <p style={{ fontSize: "11px", color: "#cbd5e1", margin: 0 }}>Confirmation and access guidelines have been dispatched to your official email address.</p>
+                      <button onClick={() => setSelectedProgram(null)} style={{ marginTop: "8px", padding: "8px 14px", backgroundColor: "#10b981", border: "none", borderRadius: "6px", color: "#020617", fontWeight: "bold", fontSize: "11px", cursor: "pointer", width: "fit-content" }}>Register Another Participant</button>
+                    </div>
+                  ) : (
+                    <form onSubmit={handleTrainingRegisterSubmit} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "12px" }}>
+                        <div>
+                          <label style={{ fontSize: "11px", color: "#94a3b8", display: "block", marginBottom: "4px" }}>Full Name *</label>
+                          <input required type="text" name="fullName" value={trainingFormData.fullName} onChange={handleTrainingInputChange} placeholder="Dr. Chidi Okafor" style={{ width: "100%", backgroundColor: "#020617", border: "1px solid #1e293b", borderRadius: "6px", padding: "8px", color: "#ffffff", fontSize: "12px" }} />
+                        </div>
+
+                        <div>
+                          <label style={{ fontSize: "11px", color: "#94a3b8", display: "block", marginBottom: "4px" }}>Official Email *</label>
+                          <input required type="email" name="email" value={trainingFormData.email} onChange={handleTrainingInputChange} placeholder="officer@nirrmpt.gov.ng" style={{ width: "100%", backgroundColor: "#020617", border: "1px solid #1e293b", borderRadius: "6px", padding: "8px", color: "#ffffff", fontSize: "12px" }} />
+                        </div>
+
+                        <div>
+                          <label style={{ fontSize: "11px", color: "#94a3b8", display: "block", marginBottom: "4px" }}>Phone Number *</label>
+                          <input required type="tel" name="phone" value={trainingFormData.phone} onChange={handleTrainingInputChange} placeholder="+234 800 000 0000" style={{ width: "100%", backgroundColor: "#020617", border: "1px solid #1e293b", borderRadius: "6px", padding: "8px", color: "#ffffff", fontSize: "12px" }} />
+                        </div>
+
+                        <div>
+                          <label style={{ fontSize: "11px", color: "#94a3b8", display: "block", marginBottom: "4px" }}>Department / Directorate</label>
+                          <input type="text" name="organization" value={trainingFormData.organization} onChange={handleTrainingInputChange} placeholder="Environmental Protection & Monitoring" style={{ width: "100%", backgroundColor: "#020617", border: "1px solid #1e293b", borderRadius: "6px", padding: "8px", color: "#ffffff", fontSize: "12px" }} />
+                        </div>
+                      </div>
+
+                      <button type="submit" disabled={isRegistering} style={{ padding: "10px", backgroundColor: "#10b981", border: "none", borderRadius: "8px", color: "#020617", fontWeight: "bold", fontSize: "12px", cursor: "pointer", width: "fit-content" }}>
+                        {isRegistering ? 'Processing Enrollment...' : 'Confirm Enrollment & Generate Token'}
+                      </button>
+                    </form>
+                  )}
+                </div>
+              )}
             </div>
           ) : (
             /* Dashboard View */

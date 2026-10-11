@@ -9,12 +9,14 @@ export default function HeaderNavbar() {
 
   const navigationLinks = [
     { name: 'Home', href: '/' },
-    { name: 'About', href: '/about' },
-    { name: 'Leadership', href: '/leadership' },
+    { name: 'About Us', href: '/about' },
+    { name: 'Leadership & Board', href: '/leadership' },
     { name: 'Directorates', href: '/departments' },
     { name: 'News', href: '/news' },
     { name: 'Events', href: '/events' },
     { name: 'Gallery', href: '/gallery' },
+    { name: 'FOI', href: '/foi' },
+    { name: 'Training', href: '/training' },
     { name: 'Contact', href: '/contact' },
   ];
 
@@ -23,8 +25,8 @@ export default function HeaderNavbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
           
-          {/* Logo Brand with Next.js Image Optimization */}
-          <Link href="/" className="flex items-center space-x-3">
+          {/* Logo Brand */}
+          <Link href="/" className="flex items-center space-x-3 group">
             <div className="relative w-10 h-10 rounded-full bg-slate-800 p-1 border border-slate-700 overflow-hidden flex-shrink-0">
               <Image
                 src="/assets/images/logo.png"
@@ -36,40 +38,47 @@ export default function HeaderNavbar() {
               />
             </div>
             <div className="flex flex-col">
-              <span className="font-extrabold text-base sm:text-lg tracking-wide text-white">
-                NIRRMPT
+              <span className="font-bold text-base leading-tight tracking-wide group-hover:text-emerald-400 transition-colors">
+                NIRRMPT Nigeria
               </span>
-              <span className="text-[10px] sm:text-xs text-slate-400 font-light hidden sm:inline">
-                Regenerative Resources Management
+              <span className="text-[10px] text-slate-400 font-medium tracking-wider uppercase">
+                REGENERATIVE RESOURCE MANAGEMENT & PROTECTION
               </span>
             </div>
           </Link>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center space-x-1 xl:space-x-2">
-            {navigationLinks.map((item) => (
+          {/* Desktop Navigation Links */}
+          <nav className="hidden lg:flex items-center space-x-6">
+            {navigationLinks.map((link) => (
               <Link
-                key={item.name}
-                href={item.href}
-                className="px-3 py-2 rounded-md text-xs xl:text-sm font-medium text-slate-200 hover:text-white hover:bg-slate-800 transition-colors"
+                key={link.name}
+                href={link.href}
+                className="text-sm font-medium text-slate-300 hover:text-white transition-colors"
               >
-                {item.name}
+                {link.name}
               </Link>
             ))}
-            <Link
-              href="/portal-login"
-              className="ml-4 px-4 py-2 text-xs font-bold rounded-md text-white bg-emerald-700 hover:bg-emerald-600 transition-colors shadow"
-            >
-              Portal Login
-            </Link>
           </nav>
 
+          {/* Portal Login Button */}
+          <div className="hidden lg:flex items-center">
+            <Link
+              href="/login"
+              className="px-4 py-2 bg-emerald-800 hover:bg-emerald-700 text-white text-xs font-semibold rounded-md flex items-center gap-2 transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+              Portal Login
+            </Link>
+          </div>
+
           {/* Mobile Menu Button */}
-          <div className="lg:hidden flex items-center">
+          <div className="flex lg:hidden">
             <button
               onClick={() => setIsOpen(!isOpen)}
               type="button"
-              className="inline-flex items-center justify-center p-2 rounded-md text-slate-300 hover:text-white hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="text-slate-300 hover:text-white focus:outline-none p-2 rounded-md"
               aria-controls="mobile-menu"
               aria-expanded={isOpen}
             >
@@ -88,24 +97,24 @@ export default function HeaderNavbar() {
         </div>
       </div>
 
-      {/* Mobile Drawer Menu */}
+      {/* Mobile Navigation Dropdown */}
       {isOpen && (
-        <div className="lg:hidden bg-slate-900 border-t border-slate-800 px-4 pt-2 pb-6 space-y-1">
-          {navigationLinks.map((item) => (
+        <div className="lg:hidden border-t border-slate-800 bg-slate-900" id="mobile-menu">
+          <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+            {navigationLinks.map((link) => (
+              <Link
+                key={link.name}
+                href={link.href}
+                onClick={() => setIsOpen(false)}
+                className="block px-3 py-2 rounded-md text-base font-medium text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+              >
+                {link.name}
+              </Link>
+            ))}
             <Link
-              key={item.name}
-              href={item.href}
+              href="/login"
               onClick={() => setIsOpen(false)}
-              className="block px-3 py-2.5 rounded-md text-base font-medium text-slate-200 hover:text-white hover:bg-slate-800"
-            >
-              {item.name}
-            </Link>
-          ))}
-          <div className="pt-4">
-            <Link
-              href="/portal-login"
-              onClick={() => setIsOpen(false)}
-              className="block w-full text-center px-4 py-3 rounded-md font-bold text-white bg-emerald-700 hover:bg-emerald-600"
+              className="block px-3 py-2 mt-2 rounded-md text-base font-semibold text-emerald-400 hover:bg-slate-800 transition-colors"
             >
               Portal Login
             </Link>

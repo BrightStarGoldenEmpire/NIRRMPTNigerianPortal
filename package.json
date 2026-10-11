@@ -6,19 +6,22 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:backup": "npx tsx scripts/backup.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
+    "@prisma/client": "5.22.0",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.116.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cn": "^0.2.6",
     "date-fns": "^4.4.0",
-    "lucide-react": "^1.47.0",
+    "lucide-react": "^1.48.0",
     "next": "16.3.4",
     "next-themes": "^0.4.6",
+    "prisma": "5.22.0",
     "radix-ui": "^1.6.7",
     "react": "19.2.8",
     "react-dom": "19.2.8",
@@ -40,6 +43,7 @@
     "eslint-config-next": "16.3.4",
     "postcss": "^8.5.28",
     "tailwindcss": "^4.3.3",
+    "tsx": "^4.19.1",
     "typescript": "^5"
   }
 }

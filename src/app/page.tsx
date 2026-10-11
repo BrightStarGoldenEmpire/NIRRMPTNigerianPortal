@@ -48,7 +48,7 @@ export default function HomePage() {
       type: 'image',
       bgGradient: 'from-emerald-950 via-[#0F392B] to-slate-900',
       badge: 'Capacity Building & Certification',
-      title: 'Accreditation & Pioneer Professional Membership Induction 2026',
+      title: 'Accreditation & Professional Membership Induction 2026',
       subtitle: 'Empowering civil servants, researchers, and environmental leaders through standardized national certification modules.',
       primaryBtnText: 'Join the Institute',
       primaryBtnLink: '/membership/apply',

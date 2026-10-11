@@ -258,7 +258,7 @@ export default function CitizenDashboardPage() {
         await fetchChatMessages();
         setLoading(false);
 
-        // Realtime Subscriptions (attach `.on` before `.subscribe`)
+        // Realtime Subscriptions
         if (supabase && process.env.NEXT_PUBLIC_SUPABASE_URL) {
           appsChannel = supabase
             .channel(`realtime-citizen-apps-${Date.now()}`)
@@ -291,7 +291,6 @@ export default function CitizenDashboardPage() {
 
     initSessionAndSubscriptions();
 
-    // Clean Unsubscribe on Component Unmount / Re-render
     return () => {
       if (appsChannel) {
         appsChannel.unsubscribe();

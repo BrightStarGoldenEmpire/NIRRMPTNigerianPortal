@@ -3,7 +3,7 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { PrismaClient } from '@prisma/client';
 
-const prisma = new PrismaClient();
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   const cookieStore = await cookies();
@@ -30,6 +30,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Gated GIS spatial layer requires cleared credentials' }, { status: 403 });
   }
 
+  const prisma = new PrismaClient();
+
   try {
     const resources = await prisma.regenerativeResource.findMany();
 
@@ -49,5 +51,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ success: true, layerData: geoJson });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
+  } finally {
+    await prisma.$disconnect();
   }
 }

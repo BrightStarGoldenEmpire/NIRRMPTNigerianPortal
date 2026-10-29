@@ -19,7 +19,7 @@ export default function Footer() {
             </p>
             <p className="flex items-center gap-2">
               <i className="fa-solid fa-phone text-amber-500"></i>
-              +2348026252862
+              +2347070002777
             </p>
           </div>
         </div>

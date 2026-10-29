@@ -30,9 +30,9 @@ export default function Navbar() {
           </span>
         </div>
         <div className="flex items-center gap-6 text-slate-300 text-[11px]">
-          <a href="tel:+2348025252362" className="hover:text-emerald-400 transition-colors flex items-center gap-1.5">
+          <a href="tel:+2347070002777" className="hover:text-emerald-400 transition-colors flex items-center gap-1.5">
             <i className="fa-solid fa-phone text-[10px]"></i>
-            +2348025252362
+            +2349114440220
           </a>
           <span className="flex items-center gap-1.5">
             <i className="fa-solid fa-location-dot text-[10px]"></i>

@@ -161,7 +161,7 @@ export default function ContactPage() {
                 Port Harcourt Ecological Monitoring Complex, Rivers State, Nigeria.
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "12px", color: "#475569" }}>
-                <span style={{ display: "flex", alignItems: "center", gap: "8px" }}><Phone size={14} style={{ color: "#059669" }} /> +234 802 525 2362</span>
+                <span style={{ display: "flex", alignItems: "center", gap: "8px" }}><Phone size={14} style={{ color: "#059669" }} /> +234 707 000 2777</span>
                 <span style={{ display: "flex", alignItems: "center", gap: "8px" }}><Clock size={14} style={{ color: "#059669" }} /> Mon - Fri: 08:00 AM - 05:00 PM WAT</span>
               </div>
             </div>

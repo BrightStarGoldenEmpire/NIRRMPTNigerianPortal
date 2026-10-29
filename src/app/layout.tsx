@@ -1,3 +1,4 @@
+// src/app/layout.tsx
 import type { Metadata } from "next";
 import "./globals.css";
 import Navbar from "@/components/layout/Navbar";
@@ -5,8 +6,11 @@ import Footer from "@/components/layout/Footer";
 import GlobalChatbot from "@/components/GlobalChatbot";
 
 export const metadata: Metadata = {
-  title: "NIRRMPT Official Portal",
-  description: "Nigerian Institute of Regenerative Resource Management and Protection Technologies",
+  title: "NIRRMPT - Nigerian Institute of Regenerative Resource Management and Protection Technologies",
+  description: "Official Federal Republic of Nigeria Portal for Regenerative Resource Management and Environmental Protection Technologies.",
+  icons: {
+    icon: "/favicon.ico", // Ensures your custom logo/favicon displays on browser tabs
+  },
 };
 
 export default function RootLayout({

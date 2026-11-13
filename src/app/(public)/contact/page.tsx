@@ -1,188 +1,167 @@
 "use client";
 
-import React, { useState } from 'react';
-import { Mail, Phone, MapPin, Send, CheckCircle2, Clock, ShieldCheck, Building } from 'lucide-react';
+import React, { useState } from "react";
+import { submitContactMessage } from "@/app/actions/contact";
+import {
+  Phone,
+  Mail,
+  MapPin,
+  Clock,
+  Send,
+  CheckCircle2,
+  AlertCircle,
+  Building2,
+  Loader2,
+} from "lucide-react";
 
 export default function ContactPage() {
+  const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [formData, setFormData] = useState({
-    fullName: '',
-    email: '',
-    department: 'General Inquiries',
-    subject: '',
-    message: ''
-  });
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setSubmitted(true);
-    setTimeout(() => {
-      setSubmitted(false);
-      setFormData({ fullName: '', email: '', department: 'General Inquiries', subject: '', message: '' });
-    }, 4000);
+    setSubmitting(true);
+    setErrorMsg(null);
+
+    const formData = new FormData(e.currentTarget);
+    const res = await submitContactMessage(formData);
+
+    setSubmitting(false);
+    if (res.success) {
+      setSubmitted(true);
+    } else {
+      setErrorMsg(res.error || "Failed to send message.");
+    }
   };
 
   return (
-    <div style={{ minHeight: "100vh", backgroundColor: "#f8fafc", color: "#0f172a", fontFamily: "system-ui, -apple-system, sans-serif" }}>
-      
-      {/* Header Banner */}
-      <div style={{ backgroundColor: "#062319", color: "#ffffff", padding: "60px 24px", borderBottom: "4px solid #10b981" }}>
-        <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", backgroundColor: "rgba(16, 185, 129, 0.15)", border: "1px solid #10b981", borderRadius: "20px", padding: "4px 14px", color: "#34d399", fontSize: "12px", fontWeight: "bold", textTransform: "uppercase", marginBottom: "16px" }}>
-            <Mail size={14} />
-            <span>Official Desk & Communications</span>
+    <div className="min-h-screen bg-slate-50 text-slate-900 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto space-y-12">
+        <div className="text-center max-w-3xl mx-auto space-y-4">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 border border-emerald-300 text-[#004d2c] text-xs font-bold uppercase tracking-wider">
+            <Building2 size={16} />
+            <span>Official Government Communications Desk</span>
           </div>
-          <h1 style={{ fontSize: "36px", fontWeight: "800", margin: "0 0 12px 0", letterSpacing: "-0.5px" }}>
-            Contact & Directorate Helpdesk
+          <h1 className="text-3xl sm:text-5xl font-black text-slate-900 tracking-tight">
+            Contact NIRRMPT Headquarters
           </h1>
-          <p style={{ fontSize: "16px", color: "#94a3b8", maxWidth: "700px", margin: 0, lineHeight: "1.6" }}>
-            Reach NIRRMPT headquarters, state field desk offices, ecological incident reporting, or technical API support teams.
+          <p className="text-slate-600 text-sm sm:text-base leading-relaxed">
+            Statutory inquiries, environmental emergency reporting, and inter-agency correspondence channels.
           </p>
         </div>
-      </div>
 
-      <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "40px 24px" }}>
-        
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "32px" }}>
-          
-          {/* Contact Form Card */}
-          <div style={{ backgroundColor: "#ffffff", borderRadius: "16px", border: "1px solid #e2e8f0", padding: "32px", boxShadow: "0 4px 12px rgba(0,0,0,0.03)" }}>
-            <h3 style={{ fontSize: "20px", fontWeight: "bold", color: "#0f172a", margin: "0 0 8px 0" }}>Submit Official Communication</h3>
-            <p style={{ fontSize: "13px", color: "#64748b", margin: "0 0 24px 0" }}>
-              Enquiries are automatically logged and dispatched to the designated directorate office.
-            </p>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Contact Details Card */}
+          <div className="bg-[#004d2c] text-white p-8 rounded-3xl space-y-8 shadow-xl flex flex-col justify-between">
+            <div className="space-y-6">
+              <h3 className="text-xl font-black border-b border-emerald-600/60 pb-3">
+                Liaison Directives
+              </h3>
+              <div className="space-y-5 text-xs text-emerald-100">
+                <div className="flex items-start gap-3">
+                  <MapPin size={18} className="text-amber-400 shrink-0 mt-0.5" />
+                  <div>
+                    <strong className="block text-white text-sm">Headquarters</strong>
+                    Port Harcourt, Rivers State, Federal Republic of Nigeria
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Phone size={18} className="text-amber-400 shrink-0 mt-0.5" />
+                  <div>
+                    <strong className="block text-white text-sm">Hotline</strong>
+                    +2349114440220 / +2348025252362
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Mail size={18} className="text-amber-400 shrink-0 mt-0.5" />
+                  <div>
+                    <strong className="block text-white text-sm">Official Inquiries</strong>
+                    info@nirrmpt.org / compliance@nirrmpt.org
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Clock size={18} className="text-amber-400 shrink-0 mt-0.5" />
+                  <div>
+                    <strong className="block text-white text-sm">Service Hours</strong>
+                    Monday – Friday: 08:00 – 17:00 WAT
+                  </div>
+                </div>
+              </div>
+            </div>
 
+            <div className="pt-4 border-t border-emerald-700/60 text-[11px] text-emerald-200 font-mono">
+              Statutory 48-Hour Official Correspondence Protocol
+            </div>
+          </div>
+
+          {/* Form */}
+          <div className="lg:col-span-2 bg-white border border-slate-200 rounded-3xl p-6 sm:p-10 shadow-sm">
             {submitted ? (
-              <div style={{ padding: "24px", backgroundColor: "#ecfdf5", border: "1px solid #a7f3d0", borderRadius: "12px", textAlign: "center", color: "#065f46" }}>
-                <CheckCircle2 size={48} style={{ margin: "0 auto 12px auto", color: "#059669" }} />
-                <h4 style={{ fontSize: "18px", fontWeight: "bold", margin: "0 0 6px 0" }}>Communication Dispatched</h4>
-                <p style={{ fontSize: "13px", margin: 0 }}>Your ticket reference code has been generated. An agent will review your inquiry shortly.</p>
+              <div className="text-center py-12 space-y-4">
+                <CheckCircle2 size={48} className="mx-auto text-emerald-600" />
+                <h3 className="text-2xl font-black text-slate-900">Message Dispatched & Recorded</h3>
+                <p className="text-xs text-slate-600 max-w-md mx-auto">
+                  Your formal message has been permanently saved into the NIRRMPT central database and routed to the Directorate Administrative Desk.
+                </p>
+                <button
+                  onClick={() => setSubmitted(false)}
+                  className="px-6 py-2 bg-[#004d2c] text-white rounded-xl text-xs font-bold shadow"
+                >
+                  Send Another Inquiry
+                </button>
               </div>
             ) : (
-              <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-                <div>
-                  <label style={{ fontSize: "12px", fontWeight: "bold", color: "#334155", display: "block", marginBottom: "6px" }}>Full Name</label>
-                  <input 
-                    required 
-                    type="text" 
-                    placeholder="e.g. Inspector Gabriel Okon" 
-                    value={formData.fullName}
-                    onChange={(e) => setFormData({...formData, fullName: e.target.value})}
-                    style={{ width: "100%", padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "13px" }} 
-                  />
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <h3 className="text-xl font-bold text-slate-900">Transmit Official Message</h3>
+
+                {errorMsg && (
+                  <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs flex items-center gap-2">
+                    <AlertCircle size={15} />
+                    <span>{errorMsg}</span>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Full Name *</label>
+                    <input name="fullName" required placeholder="Dr. Amina Bello" className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs focus:border-[#004d2c] focus:outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Official Email *</label>
+                    <input name="email" type="email" required placeholder="a.bello@institution.org" className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs focus:border-[#004d2c] focus:outline-none" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Telephone Number</label>
+                    <input name="phone" placeholder="+234 800 000 0000" className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs focus:border-[#004d2c] focus:outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Subject Matter *</label>
+                    <input name="subject" required placeholder="Environmental Baseline Inquiries" className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs focus:border-[#004d2c] focus:outline-none" />
+                  </div>
                 </div>
 
                 <div>
-                  <label style={{ fontSize: "12px", fontWeight: "bold", color: "#334155", display: "block", marginBottom: "6px" }}>Email Address</label>
-                  <input 
-                    required 
-                    type="email" 
-                    placeholder="official@domain.com" 
-                    value={formData.email}
-                    onChange={(e) => setFormData({...formData, email: e.target.value})}
-                    style={{ width: "100%", padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "13px" }} 
-                  />
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Message Content *</label>
+                  <textarea name="message" rows={5} required placeholder="Detail your operational or statutory inquiry here..." className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs focus:border-[#004d2c] focus:outline-none" />
                 </div>
 
-                <div>
-                  <label style={{ fontSize: "12px", fontWeight: "bold", color: "#334155", display: "block", marginBottom: "6px" }}>Target Directorate / Department</label>
-                  <select 
-                    value={formData.department}
-                    onChange={(e) => setFormData({...formData, department: e.target.value})}
-                    style={{ width: "100%", padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "13px", backgroundColor: "#ffffff" }}
-                  >
-                    <option>General Inquiries</option>
-                    <option>Directorate of Environmental Research</option>
-                    <option>Field Desk Operations</option>
-                    <option>Inter-MDA API & Technical Support</option>
-                    <option>Media & Public Relations Desk</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label style={{ fontSize: "12px", fontWeight: "bold", color: "#334155", display: "block", marginBottom: "6px" }}>Subject</label>
-                  <input 
-                    required 
-                    type="text" 
-                    placeholder="Brief summary of inquiry..." 
-                    value={formData.subject}
-                    onChange={(e) => setFormData({...formData, subject: e.target.value})}
-                    style={{ width: "100%", padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "13px" }} 
-                  />
-                </div>
-
-                <div>
-                  <label style={{ fontSize: "12px", fontWeight: "bold", color: "#334155", display: "block", marginBottom: "6px" }}>Message</label>
-                  <textarea 
-                    required 
-                    rows={4} 
-                    placeholder="Provide full context or inquiry details..." 
-                    value={formData.message}
-                    onChange={(e) => setFormData({...formData, message: e.target.value})}
-                    style={{ width: "100%", padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "13px", fontFamily: "sans-serif" }} 
-                  />
-                </div>
-
-                <button 
-                  type="submit" 
-                  style={{ padding: "12px", backgroundColor: "#062319", color: "#ffffff", borderRadius: "8px", fontWeight: "bold", fontSize: "14px", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="w-full py-3 bg-[#004d2c] hover:bg-[#003820] text-white font-bold rounded-xl text-xs transition shadow-md flex items-center justify-center gap-2"
                 >
-                  <Send size={16} /> Send Official Dispatch
+                  {submitting ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                  <span>{submitting ? "Transmitting to Database..." : "Send Official Inquiry"}</span>
                 </button>
               </form>
             )}
           </div>
-
-          {/* Regional Directory & Info */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-            
-            {/* Headquarters Card */}
-            <div style={{ backgroundColor: "#ffffff", borderRadius: "14px", border: "1px solid #e2e8f0", padding: "24px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "10px", color: "#059669", marginBottom: "12px" }}>
-                <Building size={20} />
-                <h4 style={{ fontSize: "16px", fontWeight: "bold", color: "#0f172a", margin: 0 }}>National Headquarters</h4>
-              </div>
-              <p style={{ fontSize: "13px", color: "#64748b", margin: "0 0 12px 0", lineHeight: "1.5" }}>
-                Federal Secretariat Complex, Shehu Shagari Way, Central Business District, Abuja, FCT Nigeria.
-              </p>
-              <div style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "12px", color: "#475569" }}>
-                <span style={{ display: "flex", alignItems: "center", gap: "8px" }}><Phone size={14} style={{ color: "#059669" }} /> +234 800 NIRRMPT (Toll Free)</span>
-                <span style={{ display: "flex", alignItems: "center", gap: "8px" }}><Mail size={14} style={{ color: "#059669" }} /> info@nirrmpt.org</span>
-              </div>
-            </div>
-
-            {/* Regional Desk Card */}
-            <div style={{ backgroundColor: "#ffffff", borderRadius: "14px", border: "1px solid #e2e8f0", padding: "24px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "10px", color: "#059669", marginBottom: "12px" }}>
-                <MapPin size={20} />
-                <h4 style={{ fontSize: "16px", fontWeight: "bold", color: "#0f172a", margin: 0 }}>South-South Regional Operations Desk</h4>
-              </div>
-              <p style={{ fontSize: "13px", color: "#64748b", margin: "0 0 12px 0", lineHeight: "1.5" }}>
-                Port Harcourt Ecological Monitoring Complex, Rivers State, Nigeria.
-              </p>
-              <div style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "12px", color: "#475569" }}>
-                <span style={{ display: "flex", alignItems: "center", gap: "8px" }}><Phone size={14} style={{ color: "#059669" }} /> +234 707 000 2777</span>
-                <span style={{ display: "flex", alignItems: "center", gap: "8px" }}><Clock size={14} style={{ color: "#059669" }} /> Mon - Fri: 08:00 AM - 05:00 PM WAT</span>
-              </div>
-            </div>
-
-            {/* Security Notice */}
-            <div style={{ backgroundColor: "#062319", color: "#ffffff", borderRadius: "14px", padding: "24px", display: "flex", gap: "16px", alignItems: "center" }}>
-              <ShieldCheck size={36} style={{ color: "#34d399", flexShrink: 0 }} />
-              <div>
-                <h5 style={{ fontSize: "14px", fontWeight: "bold", margin: "0 0 4px 0" }}>NDPR Data Privacy Guaranteed</h5>
-                <p style={{ fontSize: "11px", color: "#94a3b8", margin: 0, lineHeight: "1.5" }}>
-                  All electronic submissions are encrypted under Nigeria Data Protection Regulation standards.
-                </p>
-              </div>
-            </div>
-
-          </div>
-
         </div>
-
       </div>
-
     </div>
   );
 }

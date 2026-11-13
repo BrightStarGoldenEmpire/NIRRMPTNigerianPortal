@@ -1,92 +1,264 @@
-generator client {
-  provider = "prisma-client-js"
-}
-
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
+generator client {
+  provider = "prisma-client-js"
+}
+
 enum Role {
-  CITIZEN
-  RESEARCHER
-  STAFF_FIELD_DESK
-  DIRECTORATE_OPS
   SUPER_ADMIN
+  ADMIN
+  STAFF_ADMIN
+  RESEARCHER
+  STUDENT
+  STAKEHOLDER
+  CITIZEN
+}
+
+enum TrainingFormat {
+  ONLINE
+  OFFLINE
+  HYBRID
+}
+
+enum RegistrationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  COMPLETED
+}
+
+enum AttendanceStatus {
+  UNMARKED
+  PRESENT
+  ABSENT
+  EXCUSED
+}
+
+enum FOIStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  DENIED
+  RESPONDED
+}
+
+enum ResourceStatus {
+  ACTIVE
+  DEPLETED
+  PROTECTED
+  CRITICAL
 }
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String    @unique
-  password      String
-  role          Role      @default(CITIZEN)
-  department    String?
-  avatarUrl     String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id                    String                 @id @default(uuid())
+  email                 String                 @unique
+  passwordHash          String
+  fullName              String
+  role                  Role                   @default(CITIZEN)
+  department            String?
+  phoneNumber           String?
+  isActive              Boolean                @default(true)
+  twoFactorEnabled      Boolean                @default(false)
+  permissions           Json?                  // Array of delegated administrative function strings (e.g. MANAGE_CMS, APPROVE_FELLOWS)
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
 
-  trainings     TrainingRegistration[]
-  documents     Document[]
-  eiaSubmissions EIAReport[]
-  auditLogs     AuditLog[]
+  // Relationships
+  registrations         TrainingRegistration[]
+  newsArticles          NewsArticle[]
+  auditLogs             AuditLog[]
+  uploadedDocs          DocumentItem[]
+  managedFlags          FeatureFlag[]          @relation("FlagUpdater")
 }
 
-model Document {
-  id          String   @id @default(cuid())
-  title       String
-  category    String   // Journal, Policy Brief, Research Paper, FOI
-  fileUrl     String
-  fileType    String
-  authorId    String
-  uploadedBy  User     @relation(fields: [authorId], references: [id])
-  createdAt   DateTime @default(now())
+model FeatureFlag {
+  id                    String                 @id @default(uuid())
+  key                   String                 @unique // e.g., "PHASE_2_GIS_MAP", "PHASE_2_EIA_SUBMISSION"
+  label                 String
+  description           String
+  isEnabled             Boolean                @default(false)
+  category              String                 @default("PHASE_2")
+  updatedById           String?
+  updatedBy             User?                  @relation("FlagUpdater", fields: [updatedById], references: [id])
+  updatedAt             DateTime               @updatedAt
+  createdAt             DateTime               @default(now())
+
+  @@index([key])
+}
+
+model TrainingCourse {
+  id                    String                 @id @default(uuid())
+  title                 String
+  slug                  String                 @unique
+  code                  String                 @unique
+  description           String                 @db.Text
+  format                TrainingFormat         @default(ONLINE)
+  location              String?                // Physical venue or Virtual meeting URL
+  capacity              Int                    @default(50)
+  startDate             DateTime
+  endDate               DateTime
+  isPublished           Boolean                @default(true)
+  certificateAvailable  Boolean                @default(true)
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+
+  registrations         TrainingRegistration[]
+
+  @@index([slug])
+  @@index([isPublished])
 }
 
 model TrainingRegistration {
-  id          String   @id @default(cuid())
-  courseTitle String
-  fullName    String
-  email       String
-  phone       String
-  status      String   @default("Pending")
-  userId      String?
-  user        User?    @relation(fields: [userId], references: [id])
-  createdAt   DateTime @default(now())
+  id                    String                 @id @default(uuid())
+  registrationNumber    String                 @unique // e.g. NIRRMPT-TRN-2026-0012
+  courseId              String
+  course                TrainingCourse         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  userId                String
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status                RegistrationStatus     @default(PENDING)
+  attendance            AttendanceStatus       @default(UNMARKED)
+  attendanceSessionLogs Json?                  // Array of date & check-in timestamps
+  certificateIssued     Boolean                @default(false)
+  certificateId         String?                @unique
+  rejectionReason       String?
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+
+  @@unique([courseId, userId])
+  @@index([status])
 }
 
-model RegenerativeResource {
-  id            String   @id @default(cuid())
-  name          String
-  type          String   // Soil, Water, Forest, Mineral, Renewable
-  state         String
-  lga           String
-  latitude      Float
-  longitude     Float
-  depletionRate Float
-  regenRate     Float
-  createdAt     DateTime @default(now())
+model NewsArticle {
+  id                    String                 @id @default(uuid())
+  title                 String
+  slug                  String                 @unique
+  summary               String                 @db.Text
+  content               String                 @db.Text
+  featuredImageUrl      String?
+  isPublished           Boolean                @default(false)
+  authorId              String
+  author                User                   @relation(fields: [authorId], references: [id])
+  publishedAt           DateTime?
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+
+  @@index([isPublished])
 }
 
-model EIAReport {
-  id          String   @id @default(cuid())
-  projectName String
-  description String
-  location    String
-  fileUrl     String
-  status      String   @default("Under Review")
-  applicantId String
-  applicant   User     @relation(fields: [applicantId], references: [id])
-  createdAt   DateTime @default(now())
+model EventItem {
+  id                    String                 @id @default(uuid())
+  title                 String
+  slug                  String                 @unique
+  description           String                 @db.Text
+  startDate             DateTime
+  endDate               DateTime?
+  venue                 String
+  isPublished           Boolean                @default(true)
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+}
+
+model FOIRequest {
+  id                    String                 @id @default(uuid())
+  trackingCode          String                 @unique // e.g. FOI-NIRRMPT-2026-089
+  fullName              String
+  email                 String
+  organization          String?
+  subject               String
+  details               String                 @db.Text
+  status                FOIStatus              @default(SUBMITTED)
+  adminResponse         String?                @db.Text
+  respondedAt           DateTime?
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+
+  @@index([trackingCode])
+  @@index([status])
+}
+
+model DocumentItem {
+  id                    String                 @id @default(uuid())
+  title                 String
+  description           String?
+  fileUrl               String
+  fileSizeKb            Int
+  fileType              String
+  category              String                 // e.g. "Policy", "Annual Report", "EIA Guideline"
+  isPublic              Boolean                @default(true)
+  uploadedById          String
+  uploadedBy            User                   @relation(fields: [uploadedById], references: [id])
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+
+  @@index([category])
 }
 
 model AuditLog {
-  id        String   @id @default(cuid())
-  action    String
-  details   String
-  ipAddress String?
-  userId    String?
-  user      User?    @relation(fields: [userId], references: [id])
-  createdAt DateTime @default(now())
+  id                    String                 @id @default(uuid())
+  userId                String?
+  user                  User?                  @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action                String                 // e.g. "USER_ROLE_UPDATED", "FEATURE_FLAG_TOGGLED"
+  entity                String                 // e.g. "User", "FeatureFlag", "Course"
+  entityId              String?
+  metadata              Json?
+  ipAddress             String?
+  createdAt             DateTime               @default(now())
+
+  @@index([action])
+  @@index([createdAt])
+}
+
+// ---------------------------------------------
+// Master CMS & Public Site Text Management Model
+// ---------------------------------------------
+
+model SiteContent {
+  id                    String                 @id @default(uuid())
+  key                   String                 @unique // e.g. "hero_title", "stat_coverage_num"
+  value                 String                 @db.Text
+  category              String                 @default("GENERAL") // "HOMEPAGE", "STATS", "MANDATE", "CONTACT"
+  updatedBy             String?
+  updatedAt             DateTime               @updatedAt
+  createdAt             DateTime               @default(now())
+
+  @@index([category])
+}
+
+// ---------------------------------------------
+// Phase 2 Enterprise Models (Gated by Feature Flags)
+// ---------------------------------------------
+
+model RegenerativeResource {
+  id                    String                 @id @default(uuid())
+  name                  String
+  resourceType          String                 // e.g. "Forestry", "Aquifer", "Soil Reserve"
+  state                 String
+  lga                   String
+  coordinates           Json?                  // GeoJSON representation { lat, lng } or polygon
+  status                ResourceStatus         @default(ACTIVE)
+  monitoringAgency      String?
+  lastSurveyDate        DateTime?
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+
+  @@index([state, lga])
+  @@index([resourceType])
+}
+
+model EIAReport {
+  id                    String                 @id @default(uuid())
+  projectTitle          String
+  trackingId            String                 @unique
+  developerName         String
+  state                 String
+  lga                   String
+  submissionUrl         String
+  status                String                 @default("UNDER_REVIEW")
+  assignedReviewerId    String?
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
 }

@@ -2,7 +2,9 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
+import { logoutAction } from "@/app/actions/auth";
 import {
   Building2,
   LogOut,
@@ -30,7 +32,10 @@ import {
   Download,
   Calendar,
   Tag,
-  RefreshCw
+  RefreshCw,
+  ExternalLink,
+  Award,
+  FileText,
 } from "lucide-react";
 
 interface DocumentItem {
@@ -68,7 +73,7 @@ interface UserProfile {
 export default function CitizenDashboardPage() {
   const router = useRouter();
 
-  // Navigation State
+  // Navigation State (Exclusively Citizen Modules)
   const [activeTab, setActiveTab] = useState<"overview" | "workflows" | "gis">("overview");
 
   // Auth & Profile State
@@ -84,7 +89,7 @@ export default function CitizenDashboardPage() {
     organization: "Delta Eco Solutions Ltd",
     citizenRole: "Public Applicant",
     department: "Environmental Impact Assessment",
-    avatarUrl: ""
+    avatarUrl: "",
   });
 
   // Modals & Action States
@@ -139,9 +144,9 @@ export default function CitizenDashboardPage() {
                   name: doc.file_name,
                   url: doc.file_path,
                   uploadDate: doc.created_at ? doc.created_at.split("T")[0] : new Date().toISOString().split("T")[0],
-                  size: doc.file_size || "1.5 MB"
+                  size: doc.file_size || "1.5 MB",
                 }))
-              : []
+              : [],
           }));
           setApplications(formatted);
           return;
@@ -165,9 +170,9 @@ export default function CitizenDashboardPage() {
         assignedDepartment: "Environmental Impact Assessment",
         documents: [
           { id: "d1", name: "Initial_Environmental_Audit.pdf", url: "#", uploadDate: "2026-09-12", size: "2.4 MB" },
-          { id: "d2", name: "Site_Map_Coordinates.geojson", url: "#", uploadDate: "2026-09-14", size: "1.1 MB" }
+          { id: "d2", name: "Site_Map_Coordinates.geojson", url: "#", uploadDate: "2026-09-14", size: "1.1 MB" },
         ],
-        comments: "Field inspector assigned. Soil and hydrology probes scheduled for completion."
+        comments: "Field inspector assigned. Soil and hydrology probes scheduled for completion.",
       },
       {
         id: "app-2",
@@ -181,10 +186,10 @@ export default function CitizenDashboardPage() {
         assignedDepartment: "Biodiversity & Ecosystems",
         documents: [
           { id: "d3", name: "Mangrove_Conservation_Plan.pdf", url: "#", uploadDate: "2026-08-15", size: "4.8 MB" },
-          { id: "d4", name: "NIRRMPT_Clearance_Certificate.pdf", url: "#", uploadDate: "2026-08-28", size: "850 KB" }
+          { id: "d4", name: "NIRRMPT_Clearance_Certificate.pdf", url: "#", uploadDate: "2026-08-28", size: "850 KB" },
         ],
-        comments: "Approved by Directorate Operations. Certificate generated and active."
-      }
+        comments: "Approved by Directorate Operations. Certificate generated and active.",
+      },
     ]));
   }, []);
 
@@ -211,22 +216,22 @@ export default function CitizenDashboardPage() {
         target_channel: "general",
         sender_name: "NIRRMPT Support Desk",
         message: "Welcome to the Citizen & Partner Support Desk. Select a channel to speak with designated officers.",
-        created_at: "09:00 AM"
+        created_at: "09:00 AM",
       },
       {
         id: "2",
         target_channel: "department",
         sender_name: "EIA Department Admin",
         message: "Environmental Impact Assessment Desk online. Please reference your Application ID.",
-        created_at: "09:15 AM"
+        created_at: "09:15 AM",
       },
       {
         id: "3",
         target_channel: "officer",
         sender_name: "Dr. A. Bello (Assigned Staff)",
         message: "Hello! Your field probe report for EIA-2026-8841 is currently underway.",
-        created_at: "10:30 AM"
-      }
+        created_at: "10:30 AM",
+      },
     ]));
   }, []);
 
@@ -244,46 +249,36 @@ export default function CitizenDashboardPage() {
         if (supabase && process.env.NEXT_PUBLIC_SUPABASE_URL) {
           const { data } = await supabase.auth.getUser();
           if (data?.user?.email) {
-            activeEmail = data.user.email.replace(/@.*$/, "@nirrmpt.org");
+            activeEmail = data.user.email;
           }
         }
       } catch {
-        // Fallback email
+        // Fallback
       } finally {
         setUserEmail(activeEmail);
         setProfile((prev) => ({ ...prev, email: activeEmail }));
 
-        // Initial Data Loads
         await fetchApplications(activeEmail);
         await fetchChatMessages();
         setLoading(false);
 
-        // Realtime Subscriptions
         if (supabase && process.env.NEXT_PUBLIC_SUPABASE_URL) {
           appsChannel = supabase
             .channel(`realtime-citizen-apps-${Date.now()}`)
-            .on(
-              "postgres_changes",
-              { event: "*", schema: "public", table: "applications" },
-              () => {
-                fetchApplications(activeEmail);
-              }
-            )
+            .on("postgres_changes", { event: "*", schema: "public", table: "applications" }, () => {
+              fetchApplications(activeEmail);
+            })
             .subscribe();
 
           chatChannel = supabase
             .channel(`realtime-chat-${Date.now()}`)
-            .on(
-              "postgres_changes",
-              { event: "INSERT", schema: "public", table: "chat_messages" },
-              (payload: any) => {
-                if (payload?.new) {
-                  setChatMessages((prev) => [...prev, payload.new]);
-                } else {
-                  fetchChatMessages();
-                }
+            .on("postgres_changes", { event: "INSERT", schema: "public", table: "chat_messages" }, (payload: any) => {
+              if (payload?.new) {
+                setChatMessages((prev) => [...prev, payload.new]);
+              } else {
+                fetchChatMessages();
               }
-            )
+            })
             .subscribe();
         }
       }
@@ -311,8 +306,9 @@ export default function CitizenDashboardPage() {
     if (supabase && process.env.NEXT_PUBLIC_SUPABASE_URL) {
       await supabase.auth.signOut();
     }
+    await logoutAction();
     if (typeof window !== "undefined") localStorage.removeItem("nirrmpt_user");
-    router.push("/login");
+    window.location.href = "/portal/login";
   };
 
   const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -357,8 +353,8 @@ export default function CitizenDashboardPage() {
               applicant_email: profile.email,
               assigned_officer: "Awaiting Assignment",
               assigned_department: newCategory.includes("Forestry") ? "Biodiversity & Ecosystems" : "Environmental Impact Assessment",
-              comments: "Application submitted successfully. Under desk review by NIRRMPT administrators."
-            }
+              comments: "Application submitted successfully. Under desk review by NIRRMPT administrators.",
+            },
           ])
           .select();
 
@@ -371,8 +367,8 @@ export default function CitizenDashboardPage() {
                 file_name: newFile.name,
                 file_path: "#",
                 file_size: `${(newFile.size / (1024 * 1024)).toFixed(1)} MB`,
-                uploaded_by: profile.email
-              }
+                uploaded_by: profile.email,
+              },
             ]);
           }
           await fetchApplications(profile.email);
@@ -385,7 +381,7 @@ export default function CitizenDashboardPage() {
     } catch {
       const newEntry: ApplicationRecord = {
         id: `app-${Date.now()}`,
-        trackingId: trackingId,
+        trackingId,
         title: newTitle,
         category: newCategory,
         status: "Pending Review",
@@ -400,11 +396,11 @@ export default function CitizenDashboardPage() {
                 name: newFile.name,
                 url: "#",
                 uploadDate: new Date().toISOString().split("T")[0],
-                size: `${(newFile.size / (1024 * 1024)).toFixed(1)} MB`
-              }
+                size: `${(newFile.size / (1024 * 1024)).toFixed(1)} MB`,
+              },
             ]
           : [],
-        comments: "Application submitted successfully. Under desk review by NIRRMPT administrators."
+        comments: "Application submitted successfully. Under desk review by NIRRMPT administrators.",
       };
       setApplications([newEntry, ...applications]);
     } finally {
@@ -427,12 +423,12 @@ export default function CitizenDashboardPage() {
             file_name: uploadedFile.name,
             file_path: "#",
             file_size: `${(uploadedFile.size / (1024 * 1024)).toFixed(1)} MB`,
-            uploaded_by: profile.email
-          }
+            uploaded_by: profile.email,
+          },
         ]);
       }
     } catch {
-      // Local UI fallback
+      // Local fallback
     }
 
     setApplications((prev) =>
@@ -445,8 +441,8 @@ export default function CitizenDashboardPage() {
               name: uploadedFile.name,
               url: "#",
               uploadDate: new Date().toISOString().split("T")[0],
-              size: `${(uploadedFile.size / (1024 * 1024)).toFixed(1)} MB`
-            }
+              size: `${(uploadedFile.size / (1024 * 1024)).toFixed(1)} MB`,
+            },
           ];
           const updatedApp = { ...item, documents: updatedDocs };
           if (selectedApp && selectedApp.id === appId) setSelectedApp(updatedApp);
@@ -471,12 +467,12 @@ export default function CitizenDashboardPage() {
             target_channel: chatTarget,
             sender_name: profile.fullName || userEmail,
             sender_email: profile.email,
-            message: msgText
-          }
+            message: msgText,
+          },
         ]);
       }
     } catch {
-      // Local state fallback
+      // Local fallback
     }
 
     setChatMessages((prev) => [
@@ -486,8 +482,8 @@ export default function CitizenDashboardPage() {
         target_channel: chatTarget,
         sender_name: profile.fullName || userEmail,
         message: msgText,
-        created_at: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-      }
+        created_at: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      },
     ]);
   };
 
@@ -502,7 +498,8 @@ export default function CitizenDashboardPage() {
 
   return (
     <div className="min-h-screen bg-[#060a12] text-slate-100 font-sans flex flex-col">
-      {/* Top Banner */}
+      
+      {/* Top Federal Bar */}
       <div className="bg-[#04070d] border-b border-slate-800 px-4 py-1.5 flex flex-col sm:flex-row justify-between items-center text-[11px] text-slate-400 gap-2">
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse" />
@@ -554,68 +551,95 @@ export default function CitizenDashboardPage() {
 
       {/* Main Workspace */}
       <div className="flex-1 flex flex-col lg:flex-row">
-        {/* Navigation Sidebar */}
-        <aside className="w-full lg:w-64 bg-[#080d18] border-b lg:border-b-0 lg:border-r border-slate-800/80 p-4 flex flex-col justify-between shrink-0">
+        
+        {/* Left Sidebar: EXCLUSIVELY CITIZEN DESK */}
+        <aside className="w-full lg:w-64 bg-[#080d18] border-b lg:border-b-0 lg:border-r border-slate-800/80 p-5 flex flex-col justify-between shrink-0">
           <div className="space-y-6">
-            <div className="flex items-center gap-3 pb-3 border-b border-slate-800">
-              <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs">
-                ⌘
-              </div>
-              <div>
-                <span className="text-[9px] font-black uppercase text-emerald-400 tracking-wider block">NIRRMPT PORTAL</span>
-                <h2 className="text-xs font-black text-white">Public Hub Desk</h2>
-              </div>
+            
+            {/* Active Identity Badge */}
+            <div className="p-3 bg-emerald-950/60 border border-emerald-500/30 rounded-2xl space-y-1">
+              <span className="text-[9px] font-black uppercase text-emerald-400 tracking-wider block">
+                ACTIVE CITIZEN WORKSPACE
+              </span>
+              <h2 className="text-sm font-black text-white">Public & Partner Hub</h2>
+              <span className="text-[10px] text-slate-400 block truncate">{userEmail}</span>
             </div>
 
+            {/* Exclusive Citizen Navigation */}
             <div className="space-y-1">
-              <span className="text-[9px] font-bold uppercase text-slate-500 px-3 block mb-2">PORTAL MODULES</span>
+              <span className="text-[9px] font-bold uppercase text-slate-500 px-3 block mb-2">
+                PORTAL SERVICES
+              </span>
+
               <button
                 onClick={() => setActiveTab("overview")}
-                className={`w-full text-left px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2.5 transition-all ${
+                className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2.5 transition-all ${
                   activeTab === "overview"
-                    ? "bg-slate-800/90 text-white border border-slate-700"
+                    ? "bg-[#004d2c] text-white border border-emerald-500/40 shadow-md font-bold"
                     : "text-slate-400 hover:text-slate-200 hover:bg-slate-900"
                 }`}
               >
-                <LayoutDashboard size={15} className={activeTab === "overview" ? "text-emerald-400" : "text-slate-500"} />
+                <LayoutDashboard size={15} className={activeTab === "overview" ? "text-emerald-300" : "text-slate-500"} />
                 <span>Overview Dashboard</span>
               </button>
 
               <button
                 onClick={() => setActiveTab("workflows")}
-                className={`w-full text-left px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2.5 transition-all ${
+                className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2.5 transition-all ${
                   activeTab === "workflows"
-                    ? "bg-slate-800/90 text-white border border-slate-700"
+                    ? "bg-[#004d2c] text-white border border-emerald-500/40 shadow-md font-bold"
                     : "text-slate-400 hover:text-slate-200 hover:bg-slate-900"
                 }`}
               >
-                <Layers size={15} className={activeTab === "workflows" ? "text-emerald-400" : "text-slate-500"} />
+                <Layers size={15} className={activeTab === "workflows" ? "text-emerald-300" : "text-slate-500"} />
                 <span>Operational Workflows</span>
               </button>
 
               <button
                 onClick={() => setActiveTab("gis")}
-                className={`w-full text-left px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2.5 transition-all ${
+                className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2.5 transition-all ${
                   activeTab === "gis"
-                    ? "bg-slate-800/90 text-white border border-slate-700"
+                    ? "bg-[#004d2c] text-white border border-emerald-500/40 shadow-md font-bold"
                     : "text-slate-400 hover:text-slate-200 hover:bg-slate-900"
                 }`}
               >
-                <MapPin size={15} className={activeTab === "gis" ? "text-emerald-400" : "text-slate-500"} />
-                <span>GIS Resource Map</span>
+                <MapPin size={15} className={activeTab === "gis" ? "text-emerald-300" : "text-slate-500"} />
+                <span>GIS Telemetry Viewer</span>
               </button>
+
+              <Link
+                href="/training"
+                className="w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between text-slate-400 hover:text-slate-200 hover:bg-slate-900 transition-all"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Award size={15} className="text-slate-500" />
+                  <span>Course Certifications</span>
+                </div>
+                <ExternalLink size={12} className="text-slate-600" />
+              </Link>
+
+              <Link
+                href="/permits"
+                className="w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between text-slate-400 hover:text-slate-200 hover:bg-slate-900 transition-all"
+              >
+                <div className="flex items-center gap-2.5">
+                  <FileText size={15} className="text-slate-500" />
+                  <span>Permit Application Desk</span>
+                </div>
+                <ExternalLink size={12} className="text-slate-600" />
+              </Link>
             </div>
           </div>
 
-          <div className="pt-6 border-t border-slate-800/80 space-y-1">
-            <span className="text-[9px] uppercase font-bold text-slate-500 block">AUTHENTICATED IDENTITY</span>
-            <span className="text-xs font-bold text-slate-300 block truncate">{userEmail}</span>
-            <span className="text-[10px] text-emerald-400/80 font-medium block">nirrmpt.org verified</span>
+          <div className="pt-6 border-t border-slate-800/80 text-[10px] text-slate-500 font-mono space-y-1">
+            <span>Security: 256-Bit SSL Encrypted</span>
+            <span className="block text-emerald-400/80">NDPR Data Compliant</span>
           </div>
         </aside>
 
-        {/* Dynamic Main Section */}
+        {/* Dynamic Main Workspace */}
         <main className="flex-1 p-4 lg:p-8 space-y-6 overflow-x-hidden">
+          
           {/* Top Callout Card */}
           <div className="bg-[#0a101d] border border-slate-800/80 rounded-2xl p-5 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
@@ -1014,7 +1038,7 @@ export default function CitizenDashboardPage() {
         </div>
       )}
 
-      {/* MODAL 2: FULL DETAILS */}
+      {/* MODAL 2: FULL APPLICATION DETAILS */}
       {selectedApp && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-[#0a101d] border border-slate-700 w-full max-w-2xl rounded-2xl p-6 space-y-6 shadow-2xl">
@@ -1206,7 +1230,7 @@ export default function CitizenDashboardPage() {
         )}
       </div>
 
-      {/* MODAL 4: PROFILE & AVATAR SETTINGS */}
+      {/* MODAL 3: PROFILE & AVATAR SETTINGS */}
       {isProfileOpen && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-[#0a101d] border border-slate-700 w-full max-w-md rounded-2xl p-6 space-y-5 shadow-2xl">

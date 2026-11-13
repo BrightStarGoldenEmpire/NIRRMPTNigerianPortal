@@ -1,92 +1,42 @@
 "use client";
 
-import { useSearchParams, useRouter } from "next/navigation";
-import { useState, Suspense } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import {
   ShieldAlert,
-  Gauge,
-  Users,
-  Globe,
-  Lock,
-  ArrowLeft,
+  Building2,
+  Mail,
+  KeyRound,
   ArrowRight,
   ShieldCheck,
-  KeyRound,
-  Mail,
+  Loader2,
 } from "lucide-react";
+import { loginAction } from "@/app/actions/auth";
 
-function LoginForm() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const role = searchParams.get("role") || "citizen";
-
+export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-
-  const portalConfigs: Record<
-    string,
-    {
-      title: string;
-      subtitle: string;
-      badge: string;
-      icon: typeof ShieldAlert;
-      accentColor: string;
-      badgeBg: string;
-      badgeBorder: string;
-    }
-  > = {
-    super_admin: {
-      title: "Super Admin Gateway",
-      subtitle: "Federal Staff & Inter-MDA Secure Authorization",
-      badge: "SUPER ADMIN ACCESS",
-      icon: ShieldAlert,
-      accentColor: "#fb7185",
-      badgeBg: "rgba(244, 63, 94, 0.15)",
-      badgeBorder: "rgba(244, 63, 94, 0.3)",
-    },
-    admin: {
-      title: "Administrator Portal",
-      subtitle: "Departmental Oversight & Environmental Assessment Gateway",
-      badge: "ADMINISTRATIVE ACCESS",
-      icon: Gauge,
-      accentColor: "#fbbf24",
-      badgeBg: "rgba(245, 158, 11, 0.15)",
-      badgeBorder: "rgba(245, 158, 11, 0.3)",
-    },
-    staff: {
-      title: "Institute Staff Portal",
-      subtitle: "Internal Research Workspace & Document Repository",
-      badge: "STAFF WORKSPACE",
-      icon: Users,
-      accentColor: "#60a5fa",
-      badgeBg: "rgba(59, 130, 246, 0.15)",
-      badgeBorder: "rgba(59, 130, 246, 0.3)",
-    },
-    citizen: {
-      title: "Public & Citizen Portal",
-      subtitle: "EIA Applications, Resource Permits & FOI Submissions",
-      badge: "PUBLIC SERVICES",
-      icon: Globe,
-      accentColor: "#34d399",
-      badgeBg: "rgba(16, 185, 129, 0.15)",
-      badgeBorder: "rgba(16, 185, 129, 0.3)",
-    },
-  };
-
-  const config = portalConfigs[role] || portalConfigs.citizen;
-  const PortalIcon = config.icon;
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setErrorMsg(null);
 
-    // Simulate enterprise auth delay before dashboard redirection
-    setTimeout(() => {
+    const formData = new FormData();
+    formData.append("email", email);
+    formData.append("password", password);
+
+    const res = await loginAction(formData);
+
+    if (res && res.success && res.redirectUrl) {
+      // Force direct browser navigation straight into the role's dashboard
+      window.location.href = res.redirectUrl;
+    } else {
+      setErrorMsg(res?.error || "Invalid credentials. Please verify your email and password.");
       setLoading(false);
-      router.push(`/dashboard/${role}`);
-    }, 1200);
+    }
   };
 
   return (
@@ -99,11 +49,11 @@ function LoginForm() {
         justifyContent: "center",
         alignItems: "center",
         padding: "24px 16px",
-        fontFamily: "sans-serif",
+        fontFamily: "system-ui, -apple-system, sans-serif",
         color: "#f8fafc",
       }}
     >
-      {/* Return Navigation */}
+      {/* Return Home Link */}
       <div style={{ width: "100%", maxWidth: "460px", marginBottom: "20px" }}>
         <Link
           href="/"
@@ -115,79 +65,83 @@ function LoginForm() {
             fontSize: "13px",
             fontWeight: 600,
             textDecoration: "none",
-            transition: "color 0.2s ease",
           }}
         >
-          <ArrowLeft size={16} /> Return to Gateway Selection
+          ← Return to Public Homepage
         </Link>
       </div>
 
-      {/* Main Container Card */}
+      {/* Main Login Card */}
       <div
         style={{
           width: "100%",
           maxWidth: "460px",
           backgroundColor: "#0f172a",
           border: "1px solid #1e293b",
-          borderRadius: "16px",
+          borderRadius: "20px",
           padding: "36px 32px",
-          boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5)",
+          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.7)",
         }}
       >
-        {/* Header Section */}
-        <div style={{ textAlign: "center", marginBottom: "32px" }}>
+        {/* Brand Header */}
+        <div style={{ textAlign: "center", marginBottom: "28px" }}>
           <div
             style={{
               width: "56px",
               height: "56px",
-              borderRadius: "12px",
-              backgroundColor: config.badgeBg,
-              border: `1px solid ${config.badgeBorder}`,
+              borderRadius: "14px",
+              backgroundColor: "rgba(16, 185, 129, 0.15)",
+              border: "1px solid rgba(16, 185, 129, 0.3)",
               display: "inline-flex",
               alignItems: "center",
               justifyContent: "center",
               marginBottom: "16px",
+              color: "#34d399",
             }}
           >
-            <PortalIcon size={28} color={config.accentColor} />
-          </div>
-
-          <div
-            style={{
-              display: "inline-block",
-              padding: "4px 12px",
-              borderRadius: "20px",
-              backgroundColor: config.badgeBg,
-              border: `1px solid ${config.badgeBorder}`,
-              color: config.accentColor,
-              fontSize: "10px",
-              fontWeight: 800,
-              letterSpacing: "1px",
-              marginBottom: "10px",
-            }}
-          >
-            {config.badge}
+            <Building2 size={28} />
           </div>
 
           <h1
             style={{
-              fontSize: "24px",
+              fontSize: "22px",
               fontWeight: 800,
               color: "#ffffff",
               margin: "0 0 6px 0",
               letterSpacing: "-0.5px",
             }}
           >
-            {config.title}
+            NIRRMPT Enterprise Authentication
           </h1>
           <p style={{ fontSize: "12px", color: "#94a3b8", margin: 0, lineHeight: "1.5" }}>
-            {config.subtitle}
+            Single Sign-On (SSO) for Super Admins, Directorate Leadership, Field Staff & Citizens
           </p>
         </div>
 
-        {/* Authentication Form */}
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-          {/* Email Field */}
+        {/* Error Alert Box */}
+        {errorMsg && (
+          <div
+            style={{
+              padding: "12px 14px",
+              borderRadius: "10px",
+              backgroundColor: "rgba(239, 68, 68, 0.15)",
+              border: "1px solid rgba(239, 68, 68, 0.3)",
+              color: "#f87171",
+              fontSize: "12px",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              marginBottom: "20px",
+            }}
+          >
+            <ShieldAlert size={16} style={{ flexShrink: 0 }} />
+            <span>{errorMsg}</span>
+          </div>
+        )}
+
+        {/* Login Form */}
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
+          {/* Email */}
           <div>
             <label
               style={{
@@ -197,10 +151,10 @@ function LoginForm() {
                 color: "#cbd5e1",
                 letterSpacing: "0.5px",
                 textTransform: "uppercase",
-                marginBottom: "8px",
+                marginBottom: "6px",
               }}
             >
-              Service Email Address
+              Account Email Address
             </label>
             <div style={{ position: "relative" }}>
               <div
@@ -221,15 +175,15 @@ function LoginForm() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder={role === "citizen" ? "citizen@example.com" : "officer@nirrmpt.gov.ng"}
+                placeholder="name@nirrmpt.org"
                 style={{
                   width: "100%",
                   padding: "12px 14px 12px 42px",
                   backgroundColor: "#020617",
                   border: "1px solid #334155",
-                  borderRadius: "8px",
+                  borderRadius: "10px",
                   color: "#ffffff",
-                  fontSize: "14px",
+                  fontSize: "13px",
                   outline: "none",
                   boxSizing: "border-box",
                 }}
@@ -237,24 +191,21 @@ function LoginForm() {
             </div>
           </div>
 
-          {/* Password Field */}
+          {/* Password */}
           <div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-              <label
-                style={{
-                  fontSize: "11px",
-                  fontWeight: 700,
-                  color: "#cbd5e1",
-                  letterSpacing: "0.5px",
-                  textTransform: "uppercase",
-                }}
-              >
-                Password
-              </label>
-              <a href="#" style={{ fontSize: "11px", color: config.accentColor, textDecoration: "none", fontWeight: 600 }}>
-                Forgot?
-              </a>
-            </div>
+            <label
+              style={{
+                display: "block",
+                fontSize: "11px",
+                fontWeight: 700,
+                color: "#cbd5e1",
+                letterSpacing: "0.5px",
+                textTransform: "uppercase",
+                marginBottom: "6px",
+              }}
+            >
+              Password
+            </label>
             <div style={{ position: "relative" }}>
               <div
                 style={{
@@ -280,9 +231,9 @@ function LoginForm() {
                   padding: "12px 14px 12px 42px",
                   backgroundColor: "#020617",
                   border: "1px solid #334155",
-                  borderRadius: "8px",
+                  borderRadius: "10px",
                   color: "#ffffff",
-                  fontSize: "14px",
+                  fontSize: "13px",
                   outline: "none",
                   boxSizing: "border-box",
                 }}
@@ -298,12 +249,12 @@ function LoginForm() {
               marginTop: "8px",
               width: "100%",
               padding: "12px",
-              backgroundColor: config.accentColor,
+              backgroundColor: "#10b981",
               color: "#020617",
               border: "none",
-              borderRadius: "8px",
+              borderRadius: "10px",
               fontWeight: 800,
-              fontSize: "14px",
+              fontSize: "13px",
               cursor: loading ? "not-allowed" : "pointer",
               display: "flex",
               alignItems: "center",
@@ -313,15 +264,24 @@ function LoginForm() {
               opacity: loading ? 0.7 : 1,
             }}
           >
-            <span>{loading ? "Authenticating Session..." : "Authenticate & Access"}</span>
-            <ArrowRight size={16} />
+            {loading ? (
+              <>
+                <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} />
+                <span>Authenticating & Routing...</span>
+              </>
+            ) : (
+              <>
+                <span>Authenticate & Access Dashboard</span>
+                <ArrowRight size={16} />
+              </>
+            )}
           </button>
         </form>
 
-        {/* Card Footer Security Note */}
+        {/* Security Footer */}
         <div
           style={{
-            marginTop: "28px",
+            marginTop: "24px",
             paddingTop: "16px",
             borderTop: "1px solid #1e293b",
             display: "flex",
@@ -333,17 +293,9 @@ function LoginForm() {
           }}
         >
           <ShieldCheck size={14} color="#10b981" />
-          <span>Encrypted via 256-Bit SSL / NDPR Compliant</span>
+          <span>Statutory 256-Bit Encrypted Session · NDPR Compliant</span>
         </div>
       </div>
     </div>
-  );
-}
-
-export default function LoginPage() {
-  return (
-    <Suspense fallback={<div style={{ color: "#fff", padding: "20px", textAlign: "center" }}>Loading Gateway...</div>}>
-      <LoginForm />
-    </Suspense>
   );
 }

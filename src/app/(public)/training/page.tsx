@@ -1,282 +1,449 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import Image from 'next/image';
+import React, { useState } from "react";
+import {
+  GraduationCap,
+  Calendar,
+  MapPin,
+  Clock,
+  Award,
+  CheckCircle2,
+  Users,
+  Search,
+  BookOpen,
+  ArrowRight,
+  X,
+  FileCheck,
+  Loader2,
+} from "lucide-react";
+import { registerPublicTrainee } from "@/app/actions/training";
 
-interface TrainingProgram {
+interface TrainingCourse {
   id: string;
+  code: string;
   title: string;
-  category: string;
-  date: string;
-  location: string;
-  seatsLeft: number;
+  category: "Regulatory Compliance" | "Spatial Analytics" | "Field Operations" | "Resource Governance";
+  format: "Onsite" | "Virtual" | "Hybrid";
+  startDate: string;
+  endDate: string;
+  duration: string;
+  venue: string;
+  capacity: number;
+  enrolled: number;
+  instructor: string;
   description: string;
-  flyerUrl: string;
+  curriculum: string[];
+  certification: string;
 }
 
-export default function TrainingRegistrationPage() {
-  const [selectedProgram, setSelectedProgram] = useState<TrainingProgram | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [registrationSuccessId, setRegistrationSuccessId] = useState<string | null>(null);
-  const [imageErrors, setImageErrors] = useState<{ [key: string]: boolean }>({});
+const COURSES: TrainingCourse[] = [
+  {
+    id: "trn-01",
+    code: "NIR-EIA-2026",
+    title: "Statutory Environmental Impact Assessment (EIA) Certification",
+    category: "Regulatory Compliance",
+    format: "Hybrid",
+    startDate: "Nov 16, 2026",
+    endDate: "Nov 20, 2026",
+    duration: "5 Days Intensive",
+    venue: "NIRRMPT Directorate Hall B, Port Harcourt / Streamed Online",
+    capacity: 60,
+    enrolled: 44,
+    instructor: "Dr. Emmanuel Etuk, FNIRRMPT",
+    description:
+      "Official statutory certification program covering federal EIA guidelines, soil & aquifer auditing, ecological mitigation planning, and statutory reporting under NDPR data-privacy mandates.",
+    curriculum: [
+      "Federal Environmental Standards & Statutory Mandates",
+      "Field Data Acquisition & Soil Chemical Profiling",
+      "Hydrological Risk Modeling in Sensitive Basins",
+      "Public Consultation & Legal Stakeholder Frameworks",
+      "Comprehensive Audit Report Defense & Filing",
+    ],
+    certification: "Certified EIA Compliance Officer (CECO)",
+  },
+  {
+    id: "trn-02",
+    code: "NIR-GIS-2026",
+    title: "Advanced Geospatial Mapping & Natural Resource Telemetry",
+    category: "Spatial Analytics",
+    format: "Onsite",
+    startDate: "Dec 02, 2026",
+    endDate: "Dec 05, 2026",
+    duration: "4 Days Practical",
+    venue: "GIS Regional Training Lab, Rivers State Command",
+    capacity: 35,
+    enrolled: 29,
+    instructor: "Engr. Amina Abubakar, MNSE",
+    description:
+      "Hands-on technical laboratory training on Sentinel satellite imagery interpretation, remote sensing ground-truthing, and live database telemetry mapping for conservation reserves.",
+    curriculum: [
+      "Satellite Remote Sensing & Multispectral Band Analysis",
+      "QGIS & ArcGIS Data Layer Synthesis",
+      "GPS Field Survey Point Integration & Georeferencing",
+      "Forest Canopy & Aquifer Depletion Mapping",
+      "Exporting Clean Spatial GeoJSON for Inter-MDA Portals",
+    ],
+    certification: "Certified Resource GIS Analyst (CRGA)",
+  },
+  {
+    id: "trn-03",
+    code: "NIR-REM-2027",
+    title: "Regenerative Agro-Ecosystems & Soil Remediation Masterclass",
+    category: "Field Operations",
+    format: "Onsite",
+    startDate: "Jan 18, 2027",
+    endDate: "Jan 22, 2027",
+    duration: "5 Days Field Clinic",
+    venue: "Agricultural Ecological Field Base, Rivers State",
+    capacity: 45,
+    enrolled: 18,
+    instructor: "Prof. Kenneth Okafor",
+    description:
+      "Field-based masterclass focused on active bio-remediation protocols, degraded coastal mangrove re-vegetation, soil microbiome recovery, and organic carbon sequestration.",
+    curriculum: [
+      "Soil Chemistry Assessment & Salinity Remediation",
+      "Mangrove Restoration Protocols & Wetland Hydrology",
+      "Organic Microbiome Inoculation & Topsoil Recovery",
+      "Field Inspection Safety Equipment Standards",
+      "Post-Remediation Verification & Continuous Telemetry",
+    ],
+    certification: "Certified Ecological Remediation Specialist (CERS)",
+  },
+  {
+    id: "trn-04",
+    code: "NIR-GOV-2027",
+    title: "National Environmental Law, Policy & Stakeholder Governance",
+    category: "Resource Governance",
+    format: "Virtual",
+    startDate: "Feb 08, 2027",
+    endDate: "Feb 10, 2027",
+    duration: "3 Days Webinar",
+    venue: "Official NIRRMPT Virtual Training Platform",
+    capacity: 150,
+    enrolled: 72,
+    instructor: "Barr. Florence Danjuma",
+    description:
+      "Legal and policy framework executive seminar for corporate leaders, MDA legal officers, and environmental advocates on federal regulatory enforcement and community rights.",
+    curriculum: [
+      "Federal Environmental Protection Legislation Review",
+      "Statutory Dispute Resolution & Community Compacts",
+      "Corporate Environmental Compliance Liability",
+      "FOI Statutory Obligations & Information Rights",
+      "Inter-Agency Compliance Enforcement Coordination",
+    ],
+    certification: "Executive Certificate in Environmental Law & Governance",
+  },
+];
 
+export default function TrainingPage() {
+  const [selectedCategory, setSelectedCategory] = useState<string>("All");
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [selectedCourse, setSelectedCourse] = useState<TrainingCourse | null>(null);
+
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [registrationSuccess, setRegistrationSuccess] = useState<string | null>(null);
   const [formData, setFormData] = useState({
-    fullName: '',
-    email: '',
-    phone: '',
-    organization: '',
-    designation: '',
-    experienceLevel: 'Mid-Level',
+    fullName: "",
+    email: "",
+    phone: "",
+    organization: "",
   });
 
-  const programs: TrainingProgram[] = [
-    {
-      id: 'TR-2026-01',
-      title: 'Environmental Impact Assessment (EIA) Certification 2026',
-      category: 'Regulatory Compliance',
-      date: 'November 12 - 15, 2026',
-      location: 'Port Harcourt / Hybrid Stream',
-      seatsLeft: 14,
-      description: 'Comprehensive statutory certification covering EIA auditing frameworks under federal guidelines and NDPR principles.',
-      flyerUrl: '/assets/images/training-eia-2026.png',
-    },
-    {
-      id: 'TR-2026-02',
-      title: 'GIS Mapping & Resource Management Workshop',
-      category: 'Spatial Analytics',
-      date: 'December 03 - 05, 2026',
-      location: 'Abuja Directorate Center & Virtual',
-      seatsLeft: 8,
-      description: 'Hands-on geospatial mapping workflows, satellite terrain monitoring, and automated database resource tracking.',
-      flyerUrl: '/assets/images/training-gis-2026.png',
-    },
-    {
-      id: 'TR-2026-03',
-      title: 'Regenerative Soil & Ecosystem Protection Masterclass',
-      category: 'Field Operations',
-      date: 'January 20 - 22, 2027',
-      location: 'Field Desk Operations Base, Rivers State',
-      seatsLeft: 22,
-      description: 'Advanced methodologies for soil remediation, natural asset protection, and field data telemetry reporting.',
-      flyerUrl: '/assets/images/training-soil-2027.png',
-    },
-  ];
+  const categories = ["All", "Regulatory Compliance", "Spatial Analytics", "Field Operations", "Resource Governance"];
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
+  const filteredCourses = COURSES.filter((course) => {
+    const matchesCategory = selectedCategory === "All" || course.category === selectedCategory;
+    const matchesSearch =
+      course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      course.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      course.description.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
 
-  const handleRegisterSubmit = (e: React.FormEvent) => {
+  const handleEnrollSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
-    setRegistrationSuccessId(null);
+    if (!selectedCourse) return;
 
-    setTimeout(() => {
-      const trackingCode = `CERT-REG-${Math.floor(100000 + Math.random() * 900000)}`;
-      setIsSubmitting(false);
-      setRegistrationSuccessId(trackingCode);
-    }, 1200);
+    setIsSubmitting(true);
+    setErrorMessage(null);
+
+    const res = await registerPublicTrainee({
+      courseCode: selectedCourse.code,
+      courseTitle: selectedCourse.title,
+      fullName: formData.fullName,
+      email: formData.email,
+      phone: formData.phone,
+      organization: formData.organization,
+    });
+
+    setIsSubmitting(false);
+
+    if (res.success && res.registrationNumber) {
+      setRegistrationSuccess(res.registrationNumber);
+    } else {
+      setErrorMessage(res.error || "Failed to submit enrollment to database.");
+    }
   };
 
   return (
-    <div className="bg-slate-50 min-h-screen py-12 px-4 sm:px-6 lg:px-8 font-sans">
-      <div className="max-w-5xl mx-auto space-y-10">
+    <div className="min-h-screen bg-slate-950 text-slate-100 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto space-y-10">
         
-        {/* Header Section */}
-        <div className="bg-white border border-slate-200 rounded-xl p-8 shadow-sm">
-          <span className="inline-block px-3 py-1 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-full uppercase tracking-wider mb-2">
-            Professional Development Directorate
-          </span>
-          <h1 className="text-3xl font-extrabold text-emerald-950 tracking-tight">
-            Training & Workshop Certification Portal
+        {/* Banner */}
+        <div className="text-center max-w-3xl mx-auto space-y-4">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-950 border border-emerald-500/30 text-emerald-400 text-xs font-semibold tracking-wider uppercase">
+            <GraduationCap size={16} />
+            <span>Federal Professional Capacity Building Program</span>
+          </div>
+          <h1 className="text-3xl sm:text-5xl font-black text-white tracking-tight">
+            NIRRMPT Training & Certification Directorate
           </h1>
-          <p className="text-sm text-slate-600 mt-2 max-w-2xl leading-relaxed">
-            Register for official NIRRMPT environmental certifications, spatial mapping workshops, and regulatory compliance masterclasses.
+          <p className="text-slate-400 text-sm sm:text-base leading-relaxed">
+            Statutory professional development, EIA auditing certifications, and hands-on geospatial training for environmental officers, researchers, and institutional leaders.
           </p>
         </div>
 
-        {/* Programs Listing Grid */}
-        <div className="space-y-6">
-          <h2 className="text-xl font-bold text-slate-900">Available Certification Modules</h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {programs.map((prog) => (
-              <div 
-                key={prog.id}
-                className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm flex flex-col justify-between hover:border-emerald-700 transition-all"
+        {/* Filter */}
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 flex flex-col md:flex-row gap-4 items-center justify-between shadow-xl">
+          <div className="relative w-full md:w-80">
+            <Search size={16} className="absolute left-3.5 top-3.5 text-slate-500" />
+            <input
+              type="text"
+              placeholder="Search course title, code, or keyword..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+            />
+          </div>
+
+          <div className="flex gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0">
+            {categories.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
+                  selectedCategory === cat
+                    ? "bg-[#004d2c] text-emerald-200 border border-emerald-500/40 shadow-sm"
+                    : "bg-slate-950 text-slate-400 border border-slate-800 hover:text-white"
+                }`}
               >
-                <div>
-                  {/* Program Flyer Banner / Fallback Section */}
-                  <div className="relative h-44 w-full bg-slate-900 overflow-hidden flex items-center justify-center">
-                    {!imageErrors[prog.id] ? (
-                      <Image
-                        src={prog.flyerUrl}
-                        alt={`${prog.title} Flyer`}
-                        fill
-                        sizes="(max-width: 768px) 100vw, 33vw"
-                        className="object-cover"
-                        onError={() => setImageErrors((prev) => ({ ...prev, [prog.id]: true }))}
-                      />
-                    ) : (
-                      <div className="absolute inset-0 bg-gradient-to-br from-emerald-900 to-slate-900 flex flex-col items-center justify-center p-4 text-center">
-                        <span className="text-xs font-mono font-bold text-emerald-400 uppercase tracking-widest">NIRRMPT Certification</span>
-                        <span className="text-xs text-white font-bold mt-1">{prog.id}</span>
-                      </div>
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent flex items-end p-4">
-                      <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 bg-emerald-800 text-white rounded-full">
-                        {prog.category}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="p-6 space-y-3">
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="font-mono font-bold text-emerald-700">
-                        {prog.seatsLeft} Seats Left
-                      </span>
-                      <span className="text-slate-400 font-medium">{prog.id}</span>
-                    </div>
-
-                    <h3 className="text-base font-bold text-slate-900 leading-snug">
-                      {prog.title}
-                    </h3>
-
-                    <p className="text-xs text-slate-600 leading-relaxed line-clamp-3">
-                      {prog.description}
-                    </p>
-
-                    <div className="pt-2 text-xs space-y-1 text-slate-500 font-medium border-t border-slate-100">
-                      <div>📅 {prog.date}</div>
-                      <div>📍 {prog.location}</div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="p-6 pt-0">
-                  <button
-                    onClick={() => {
-                      setSelectedProgram(prog);
-                      setRegistrationSuccessId(null);
-                    }}
-                    className="w-full py-2.5 bg-emerald-900 hover:bg-emerald-800 text-white text-xs font-bold rounded-md shadow transition-colors"
-                  >
-                    Select & Register
-                  </button>
-                </div>
-              </div>
+                {cat}
+              </button>
             ))}
           </div>
         </div>
 
-        {/* Interactive Registration Form Modal / Section */}
-        {selectedProgram && (
-          <div className="bg-white border-2 border-emerald-800 rounded-xl p-8 shadow-md space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-4">
-              <div>
-                <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider">Selected Program</span>
-                <h3 className="text-xl font-bold text-slate-900 mt-1">{selectedProgram.title}</h3>
-                <p className="text-xs text-slate-500 mt-0.5">{selectedProgram.date} • {selectedProgram.location}</p>
-              </div>
-              <button 
-                onClick={() => setSelectedProgram(null)}
-                className="text-slate-400 hover:text-slate-700 text-sm font-bold self-start md:self-auto"
+        {/* Course Cards Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {filteredCourses.map((course) => {
+            const seatsLeft = course.capacity - course.enrolled;
+            return (
+              <div
+                key={course.id}
+                className="bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-2xl p-6 flex flex-col justify-between transition-all shadow-md group"
               >
-                ✕ Close
-              </button>
-            </div>
-
-            {registrationSuccessId ? (
-              <div className="p-6 bg-emerald-50 border border-emerald-300 rounded-lg text-emerald-900 space-y-3">
-                <h3 className="font-bold text-lg">Training Application Successfully Submitted!</h3>
-                <p className="text-sm">
-                  Your registration token is: <span className="font-mono font-bold bg-white px-2 py-1 border rounded text-emerald-700">{registrationSuccessId}</span>
-                </p>
-                <p className="text-xs text-slate-600">
-                  A verification confirmation email with schedule details and access materials has been dispatched to your email address.
-                </p>
-                <button
-                  onClick={() => setSelectedProgram(null)}
-                  className="mt-4 px-4 py-2 bg-emerald-900 text-white text-xs font-bold rounded-md"
-                >
-                  Register Another Participant
-                </button>
-              </div>
-            ) : (
-              <form onSubmit={handleRegisterSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                      Full Name *
-                    </label>
-                    <input
-                      required
-                      type="text"
-                      name="fullName"
-                      value={formData.fullName}
-                      onChange={handleInputChange}
-                      placeholder="e.g., Dr. Chidi Okafor"
-                      className="w-full p-2.5 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none"
-                    />
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <span className="font-mono text-xs font-bold px-2.5 py-1 rounded bg-emerald-950/80 text-emerald-400 border border-emerald-500/30">
+                      {course.code}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 font-medium">
+                        {course.format}
+                      </span>
+                      <span className="text-xs px-2.5 py-1 rounded-full bg-amber-950/50 text-amber-300 border border-amber-500/30 font-medium">
+                        {seatsLeft} seats left
+                      </span>
+                    </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                      Official Email *
-                    </label>
-                    <input
-                      required
-                      type="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      placeholder="name@agency.gov.ng"
-                      className="w-full p-2.5 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none"
-                    />
+                    <h3 className="text-xl font-bold text-white group-hover:text-emerald-400 transition-colors">
+                      {course.title}
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-2 leading-relaxed">
+                      {course.description}
+                    </p>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                      Phone Number *
-                    </label>
-                    <input
-                      required
-                      type="tel"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleInputChange}
-                      placeholder="+234 800 000 0000"
-                      className="w-full p-2.5 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                      Organization / Agency
-                    </label>
-                    <input
-                      type="text"
-                      name="organization"
-                      value={formData.organization}
-                      onChange={handleInputChange}
-                      placeholder="e.g., Federal Ministry of Environment"
-                      className="w-full p-2.5 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none"
-                    />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-slate-300 pt-2 border-t border-slate-800/80">
+                    <div className="flex items-center gap-2">
+                      <Calendar size={14} className="text-emerald-400" />
+                      <span>{course.startDate} – {course.endDate}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Clock size={14} className="text-emerald-400" />
+                      <span>{course.duration}</span>
+                    </div>
+                    <div className="flex items-center gap-2 sm:col-span-2">
+                      <MapPin size={14} className="text-emerald-400 shrink-0" />
+                      <span className="truncate">{course.venue}</span>
+                    </div>
+                    <div className="flex items-center gap-2 sm:col-span-2">
+                      <Award size={14} className="text-amber-400 shrink-0" />
+                      <span className="text-amber-300/90 font-medium">{course.certification}</span>
+                    </div>
                   </div>
                 </div>
 
-                <div className="pt-2">
+                <div className="pt-6 border-t border-slate-800/80 flex items-center justify-between gap-4 mt-6">
+                  <div className="text-xs text-slate-400">
+                    Lead: <span className="text-white font-semibold">{course.instructor}</span>
+                  </div>
                   <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="px-6 py-3 bg-emerald-900 hover:bg-emerald-800 text-white font-bold text-xs rounded-md shadow transition-colors disabled:opacity-50"
+                    onClick={() => {
+                      setSelectedCourse(course);
+                      setRegistrationSuccess(null);
+                      setErrorMessage(null);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-[#004d2c] hover:bg-emerald-700 text-white transition shadow-sm"
                   >
-                    {isSubmitting ? 'Processing Registration...' : 'Confirm Enrollment & Generate Token'}
+                    <span>View Syllabus & Register</span>
+                    <ArrowRight size={14} />
                   </button>
                 </div>
-              </form>
-            )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Modal */}
+        {selectedCourse && (
+          <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+            <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-2xl w-full p-6 sm:p-8 space-y-6 shadow-2xl relative my-8">
+              <button
+                onClick={() => setSelectedCourse(null)}
+                className="absolute right-6 top-6 text-slate-400 hover:text-white"
+              >
+                <X size={20} />
+              </button>
+
+              <div>
+                <span className="text-xs font-mono font-bold text-emerald-400 px-2.5 py-1 rounded bg-emerald-950 border border-emerald-500/30">
+                  {selectedCourse.code}
+                </span>
+                <h2 className="text-2xl font-black text-white mt-3">
+                  {selectedCourse.title}
+                </h2>
+                <p className="text-xs text-slate-400 mt-1">
+                  Certification Award: <strong className="text-amber-400">{selectedCourse.certification}</strong>
+                </p>
+              </div>
+
+              <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-2">
+                <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                  <FileCheck size={14} className="text-emerald-400" />
+                  Key Modules & Syllabus
+                </h4>
+                <ul className="text-xs text-slate-400 space-y-1.5 pl-4 list-disc">
+                  {selectedCourse.curriculum.map((item, idx) => (
+                    <li key={idx}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+
+              {errorMessage && (
+                <div className="p-3 bg-rose-950/50 border border-rose-500/40 rounded-xl text-rose-300 text-xs">
+                  {errorMessage}
+                </div>
+              )}
+
+              {registrationSuccess ? (
+                <div className="bg-emerald-950/60 border border-emerald-500/40 rounded-2xl p-6 text-center space-y-3">
+                  <CheckCircle2 size={36} className="mx-auto text-emerald-400" />
+                  <h3 className="text-lg font-bold text-white">Enrollment Confirmed & Saved in Database!</h3>
+                  <p className="text-xs text-slate-300">
+                    Your candidate profile has been registered under Statutory Registration ID:
+                  </p>
+                  <p className="font-mono text-base font-black text-amber-400 bg-slate-950 py-1.5 px-4 rounded-lg inline-block border border-slate-800">
+                    {registrationSuccess}
+                  </p>
+                  <p className="text-xs text-slate-400">
+                    Your trainee account has been saved in the NIRRMPT central database.
+                  </p>
+                  <button
+                    onClick={() => setSelectedCourse(null)}
+                    className="mt-4 px-6 py-2 bg-[#004d2c] hover:bg-emerald-700 text-white rounded-xl text-xs font-bold"
+                  >
+                    Close
+                  </button>
+                </div>
+              ) : (
+                <form onSubmit={handleEnrollSubmit} className="space-y-4 pt-2 border-t border-slate-800">
+                  <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+                    Candidate Enrollment Form (Direct Database Submission)
+                  </h4>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-400 mb-1">Full Name *</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Dr. Emmanuel Etuk"
+                        value={formData.fullName}
+                        onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-400 mb-1">Official Email Address *</label>
+                      <input
+                        type="email"
+                        required
+                        placeholder="e.etuk@institution.org"
+                        value={formData.email}
+                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-400 mb-1">Phone Number *</label>
+                      <input
+                        type="tel"
+                        required
+                        placeholder="+234 800 000 0000"
+                        value={formData.phone}
+                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-400 mb-1">Organization / MDA</label>
+                      <input
+                        type="text"
+                        placeholder="Ministry of Environment / Private"
+                        value={formData.organization}
+                        onChange={(e) => setFormData({ ...formData, organization: e.target.value })}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-3 pt-3">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCourse(null)}
+                      className="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-slate-300 hover:text-white"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="inline-flex items-center gap-2 px-6 py-2 rounded-xl text-xs font-bold bg-[#004d2c] hover:bg-emerald-700 text-white shadow-md transition"
+                    >
+                      {isSubmitting && <Loader2 size={14} className="animate-spin" />}
+                      <span>{isSubmitting ? "Saving to Database..." : "Confirm Official Enrollment"}</span>
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
           </div>
         )}
 

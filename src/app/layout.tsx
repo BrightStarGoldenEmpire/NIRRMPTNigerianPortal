@@ -19,7 +19,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         {/* Tailwind CSS CDN */}
         <script src="https://cdn.tailwindcss.com"></script>
@@ -29,7 +29,10 @@ export default function RootLayout({
           href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" 
         />
       </head>
-      <body className="bg-slate-50 text-slate-900 antialiased min-h-screen flex flex-col justify-between">
+      <body
+        className="bg-slate-50 text-slate-900 antialiased min-h-screen flex flex-col justify-between"
+        suppressHydrationWarning
+      >
         {/* Global Navigation Bar */}
         <Navbar />
 

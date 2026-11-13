@@ -1,32 +1,34 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabaseClient';
-import { 
-  FileText, 
-  MapPin, 
-  Image as ImageIcon, 
-  Bell, 
-  Upload, 
-  PenTool, 
-  RefreshCw, 
-  CheckCircle2, 
+import React, { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabaseClient";
+import { logoutAction } from "@/app/actions/auth";
+import {
+  FileText,
+  MapPin,
+  Image as ImageIcon,
+  Bell,
+  Upload,
+  PenTool,
+  RefreshCw,
+  CheckCircle2,
   X,
-  ShieldCheck,
   MessageSquare,
   Send,
   Building2,
   Circle,
-  Users,
   Briefcase,
   Layers,
   Map,
   Award,
   Calendar,
-  BookOpen,
-  User
-} from 'lucide-react';
+  User,
+  LogOut,
+  UploadCloud,
+  Eye,
+  Camera,
+} from "lucide-react";
 
 interface StaffProfile {
   id?: string;
@@ -44,7 +46,7 @@ interface DetailRecord {
   date?: string;
   category?: string;
   file_url?: string;
-  approval_status?: 'pending_approval' | 'approved' | 'rejected';
+  approval_status?: "pending_approval" | "approved" | "rejected";
   full_content?: string;
 }
 
@@ -65,7 +67,7 @@ interface ChatMessage {
   target: string;
   text: string;
   timestamp: string;
-  chatType: 'private' | 'group';
+  chatType: "private" | "group";
 }
 
 const DEPARTMENTS = [
@@ -75,37 +77,34 @@ const DEPARTMENTS = [
   "Regenerative Agriculture & Soil Conservation",
   "Forestry & Biodiversity Reserves",
   "Directorate Operations & Administration",
-  "Research & Technology Integration"
+  "Research & Technology Integration",
 ];
 
 const PRIVATE_CONTACTS = [
   "Admin Portal",
   "Field Team Lead",
   "GIS Operations Lead",
-  "Senior Hydrologist"
+  "Senior Hydrologist",
 ];
 
 const GROUP_CHANNELS = [
   "General Staff Forum",
   "GIS Emergency Channel",
-  "Field Ops Directive Group"
+  "Field Ops Directive Group",
 ];
 
 export default function StaffDashboard() {
   const router = useRouter();
-  
-  // Navigation & User State
+
+  // Navigation State
+  const [activeSubModule, setActiveSubModule] = useState<"overview" | "workflows" | "gis" | "training">("overview");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "profile">("dashboard");
+
+  // Profile State
   const [profile, setProfile] = useState<StaffProfile | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
-
-  // Active Sidebar Role Tab & Sub-module (Added training module support)
-  const [activeRole, setActiveRole] = useState<'public' | 'staff' | 'directorate' | 'superadmin'>('staff');
-  const [activeSubModule, setActiveSubModule] = useState<'overview' | 'workflows' | 'gis' | 'training'>('overview');
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'profile'>('dashboard');
-
-  // Profile Form States
-  const [profileName, setProfileName] = useState('Staff Officer');
+  const [profileName, setProfileName] = useState("Staff Officer");
   const [selectedDepartment, setSelectedDepartment] = useState(DEPARTMENTS[0]);
   const [profileAvatar, setProfileAvatar] = useState<string | null>(null);
 
@@ -114,187 +113,238 @@ export default function StaffDashboard() {
   const [isRegistering, setIsRegistering] = useState(false);
   const [registrationSuccessId, setRegistrationSuccessId] = useState<string | null>(null);
   const [trainingFormData, setTrainingFormData] = useState({
-    fullName: '',
-    email: '',
-    phone: '',
-    organization: '',
-    designation: '',
-    experienceLevel: 'Mid-Level',
+    fullName: "",
+    email: "",
+    phone: "",
+    organization: "",
+    designation: "",
+    experienceLevel: "Mid-Level",
   });
 
   const trainingPrograms: TrainingProgram[] = [
     {
-      id: 'TR-2026-01',
-      title: 'Environmental Impact Assessment (EIA) Certification 2026',
-      category: 'Regulatory Compliance',
-      date: 'November 12 - 15, 2026',
-      location: 'Port Harcourt / Hybrid Stream',
+      id: "TR-2026-01",
+      title: "Environmental Impact Assessment (EIA) Certification 2026",
+      category: "Regulatory Compliance",
+      date: "November 12 - 15, 2026",
+      location: "Port Harcourt / Hybrid Stream",
       seatsLeft: 14,
-      description: 'Comprehensive statutory certification covering EIA auditing frameworks under federal guidelines and NDPR principles.',
-      flyerUrl: '/assets/images/training-eia-2026.png',
+      description: "Comprehensive statutory certification covering EIA auditing frameworks under federal guidelines and NDPR principles.",
+      flyerUrl: "/assets/images/training-eia-2026.png",
     },
     {
-      id: 'TR-2026-02',
-      title: 'GIS Mapping & Resource Management Workshop',
-      category: 'Spatial Analytics',
-      date: 'December 03 - 05, 2026',
-      location: 'Abuja Directorate Center & Virtual',
+      id: "TR-2026-02",
+      title: "GIS Mapping & Resource Management Workshop",
+      category: "Spatial Analytics",
+      date: "December 03 - 05, 2026",
+      location: "Abuja Directorate Center & Virtual",
       seatsLeft: 8,
-      description: 'Hands-on geospatial mapping workflows, satellite terrain monitoring, and automated database resource tracking.',
-      flyerUrl: '/assets/images/training-gis-2026.png',
+      description: "Hands-on geospatial mapping workflows, satellite terrain monitoring, and automated database resource tracking.",
+      flyerUrl: "/assets/images/training-gis-2026.png",
     },
     {
-      id: 'TR-2026-03',
-      title: 'Regenerative Soil & Ecosystem Protection Masterclass',
-      category: 'Field Operations',
-      date: 'January 20 - 22, 2027',
-      location: 'Field Desk Operations Base, Rivers State',
+      id: "TR-2026-03",
+      title: "Regenerative Soil & Ecosystem Protection Masterclass",
+      category: "Field Operations",
+      date: "January 20 - 22, 2027",
+      location: "Field Desk Operations Base, Rivers State",
       seatsLeft: 22,
-      description: 'Advanced methodologies for soil remediation, natural asset protection, and field data telemetry reporting.',
-      flyerUrl: '/assets/images/training-soil-2027.png',
+      description: "Advanced methodologies for soil remediation, natural asset protection, and field data telemetry reporting.",
+      flyerUrl: "/assets/images/training-soil-2027.png",
     },
   ];
 
-  // Dynamic Card Data Stores
+  // Data Stores
   const [submissionsList, setSubmissionsList] = useState<DetailRecord[]>([]);
   const [surveysList, setSurveysList] = useState<DetailRecord[]>([]);
   const [mediaList, setMediaList] = useState<DetailRecord[]>([]);
   const [bulletinsList, setBulletinsList] = useState<DetailRecord[]>([]);
 
-  // Modals & Overlay States
-  const [selectedCard, setSelectedCard] = useState<'submissions' | 'surveys' | 'media' | 'bulletins' | null>(null);
+  // Modals
+  const [selectedCard, setSelectedCard] = useState<"submissions" | "surveys" | "media" | "bulletins" | null>(null);
   const [expandedRecordId, setExpandedRecordId] = useState<string | number | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeModal, setActiveModal] = useState<'news' | 'gallery' | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeModal, setActiveModal] = useState<"news" | "gallery" | null>(null);
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
 
-  // Live Chat Drawer State
+  // Live Chat
   const [isChatOpen, setIsChatOpen] = useState(false);
-  const [chatMode, setChatMode] = useState<'private' | 'group'>('private');
+  const [chatMode, setChatMode] = useState<"private" | "group">("private");
   const [activeTarget, setActiveTarget] = useState<string>(PRIVATE_CONTACTS[0]);
-  const [chatMessageInput, setChatMessageInput] = useState('');
+  const [chatMessageInput, setChatMessageInput] = useState("");
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
-    { id: '1', sender: 'Admin Portal', target: 'Admin Portal', text: 'Welcome to NIRRMPT Operational Desk. Submit direct staff queries here.', timestamp: '09:00 AM', chatType: 'private' },
-    { id: '2', sender: 'GIS Operations Lead', target: 'General Staff Forum', text: 'All field officers: Sector 4 GIS satellite sync completed.', timestamp: '10:15 AM', chatType: 'group' }
+    {
+      id: "1",
+      sender: "Admin Portal",
+      target: "Admin Portal",
+      text: "Welcome to NIRRMPT Operational Desk. Submit direct staff queries here.",
+      timestamp: "09:00 AM",
+      chatType: "private",
+    },
+    {
+      id: "2",
+      sender: "GIS Operations Lead",
+      target: "General Staff Forum",
+      text: "All field officers: Sector 4 GIS satellite sync completed.",
+      timestamp: "10:15 AM",
+      chatType: "group",
+    },
   ]);
 
   // Form Field Inputs
-  const [newsTitle, setNewsTitle] = useState('');
-  const [newsContent, setNewsContent] = useState('');
+  const [newsTitle, setNewsTitle] = useState("");
+  const [newsContent, setNewsContent] = useState("");
   const [newsFile, setNewsFile] = useState<File | null>(null);
-  const [mediaCaption, setMediaCaption] = useState('');
+  const [mediaCaption, setMediaCaption] = useState("");
   const [mediaFile, setMediaFile] = useState<File | null>(null);
 
-  // Role Navigation Router
-  const handleRoleNavigation = (role: 'public' | 'staff' | 'directorate' | 'superadmin') => {
-    setActiveRole(role);
-    if (role === 'public') router.push('/dashboard/citizen');
-    if (role === 'staff') router.push('/dashboard/staff');
-    if (role === 'directorate') router.push('/dashboard/admin');
-    if (role === 'superadmin') router.push('/dashboard/superadmin');
-  };
-
-  // Data Fetching Engine
+  // Data Fetching
   const loadWorkspaceData = useCallback(async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      let currentUserEmail = 'staff.officer@nirrmpt.gov.ng';
-      let currentUserId = '';
+      let currentUserEmail = "field.staff@nirrmpt.org";
+      let currentUserId = "";
 
-      if (session?.user) {
-        currentUserId = session.user.id;
-        currentUserEmail = session.user.email || 'staff@nirrmpt.gov.ng';
-      } else {
-        const storedUser = typeof window !== 'undefined' ? localStorage.getItem('nirrmpt_user') : null;
-        const parsed = storedUser ? JSON.parse(storedUser) : null;
-        if (parsed?.email) currentUserEmail = parsed.email;
+      if (supabase && process.env.NEXT_PUBLIC_SUPABASE_URL) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          currentUserId = session.user.id;
+          currentUserEmail = session.user.email || "field.staff@nirrmpt.org";
+        }
       }
 
       setProfile({
         id: currentUserId,
         email: currentUserEmail,
-        role: 'staff',
-        department: selectedDepartment
+        role: "staff",
+        department: selectedDepartment,
       });
 
       const [newsRes, surveysRes, mediaRes, bulletinsRes] = await Promise.allSettled([
-        supabase.from('news_submissions').select('*').order('created_at', { ascending: false }),
-        supabase.from('field_surveys').select('*').order('created_at', { ascending: false }),
-        supabase.from('gallery_assets').select('*').order('created_at', { ascending: false }),
-        supabase.from('internal_bulletins').select('*').order('created_at', { ascending: false })
+        supabase ? supabase.from("news_submissions").select("*").order("created_at", { ascending: false }) : Promise.reject(),
+        supabase ? supabase.from("field_surveys").select("*").order("created_at", { ascending: false }) : Promise.reject(),
+        supabase ? supabase.from("gallery_assets").select("*").order("created_at", { ascending: false }) : Promise.reject(),
+        supabase ? supabase.from("internal_bulletins").select("*").order("created_at", { ascending: false }) : Promise.reject(),
       ]);
 
-      if (newsRes.status === 'fulfilled' && newsRes.value.data && newsRes.value.data.length > 0) {
-        setSubmissionsList(newsRes.value.data.map((item: any) => ({
-          id: item.id,
-          title: item.title || 'Untitled Field Report',
-          subtitle: item.content?.substring(0, 90) + '...' || 'Pending operational report summary',
-          full_content: item.content || 'No detailed content provided for this record.',
-          status: item.status || 'pending',
-          approval_status: item.approval_status || 'pending_approval',
-          date: new Date(item.created_at || Date.now()).toLocaleDateString()
-        })));
+      if (newsRes.status === "fulfilled" && newsRes.value.data && newsRes.value.data.length > 0) {
+        setSubmissionsList(
+          newsRes.value.data.map((item: any) => ({
+            id: item.id,
+            title: item.title || "Untitled Field Report",
+            subtitle: item.content?.substring(0, 90) + "..." || "Pending operational report summary",
+            full_content: item.content || "No detailed content provided.",
+            status: item.status || "pending",
+            approval_status: item.approval_status || "pending_approval",
+            date: new Date(item.created_at || Date.now()).toLocaleDateString(),
+          }))
+        );
       } else {
         setSubmissionsList([
-          { id: '1', title: 'Q3 Coastal Soil Degradation Assessment', subtitle: 'Detailed analysis of coastal erosion in Sector 4', full_content: 'Comprehensive field investigation conducted across Sector 4. High concentration of salinity detected in surface soil samples. Recommended emergency barrier deployment and mangrove re-vegetation.', status: 'published', approval_status: 'approved', date: '2026-09-15' },
-          { id: '2', title: 'Hydrological Field Survey Draft', subtitle: 'River Basin water quality measurements', full_content: 'Water pH levels recorded at 6.4 with trace mineral sedimentation. Secondary testing scheduled for upstream tributaries.', status: 'pending', approval_status: 'pending_approval', date: '2026-09-17' },
-          { id: '3', title: 'Vegetation Canopy Coverage Index', subtitle: 'Satellite validation ground truth data', full_content: 'Ground truth verification confirms 82% canopy density across designated forest reserves, aligning with Sentinel-2 satellite imagery.', status: 'published', approval_status: 'approved', date: '2026-09-10' },
-          { id: '4', title: 'Ecosystem Regeneration Status Report', subtitle: 'Forestry reserve monitoring metrics', full_content: 'Preliminary biomass growth indices show a 14% yield recovery following seasonal conservation measures.', status: 'pending', approval_status: 'pending_approval', date: '2026-09-18' }
+          {
+            id: "1",
+            title: "Q3 Coastal Soil Degradation Assessment",
+            subtitle: "Detailed analysis of coastal erosion in Sector 4",
+            full_content: "High concentration of salinity detected in surface soil samples. Recommended emergency barrier deployment and mangrove re-vegetation.",
+            status: "published",
+            approval_status: "approved",
+            date: "2026-09-15",
+          },
+          {
+            id: "2",
+            title: "Hydrological Field Survey Draft",
+            subtitle: "River Basin water quality measurements",
+            full_content: "Water pH levels recorded at 6.4 with trace mineral sedimentation.",
+            status: "pending",
+            approval_status: "pending_approval",
+            date: "2026-09-17",
+          },
         ]);
       }
 
-      if (surveysRes.status === 'fulfilled' && surveysRes.value.data && surveysRes.value.data.length > 0) {
-        setSurveysList(surveysRes.value.data.map((item: any) => ({
-          id: item.id,
-          title: item.title || 'Assigned Field Survey',
-          subtitle: item.location || 'Active Inspection Zone',
-          full_content: `Location coordinates verified. Task scope: ${item.location || 'Sector Inspection'}`,
-          status: item.status || 'Active',
-          date: new Date(item.created_at || Date.now()).toLocaleDateString()
-        })));
+      if (surveysRes.status === "fulfilled" && surveysRes.value.data && surveysRes.value.data.length > 0) {
+        setSurveysList(
+          surveysRes.value.data.map((item: any) => ({
+            id: item.id,
+            title: item.title || "Assigned Field Survey",
+            subtitle: item.location || "Active Inspection Zone",
+            full_content: `Location coordinates verified. Task scope: ${item.location || "Sector Inspection"}`,
+            status: item.status || "Active",
+            date: new Date(item.created_at || Date.now()).toLocaleDateString(),
+          }))
+        );
       } else {
         setSurveysList([
-          { id: 's1', title: 'Niger Delta Mangrove Restoration Monitor', subtitle: 'Zone Delta-4 Field Sector', full_content: 'Active field survey tracking root survival rate in restored coastal zone.', status: 'Active', date: '2026-09-18' },
-          { id: 's2', title: 'Soil Contamination GIS Sampling', subtitle: 'Zone North-2 Industrial Perimeter', full_content: 'Heavy metal heavy-ion analysis scheduled across 12 grid blocks.', status: 'Active', date: '2026-09-17' }
+          {
+            id: "s1",
+            title: "Niger Delta Mangrove Restoration Monitor",
+            subtitle: "Zone Delta-4 Field Sector",
+            full_content: "Active field survey tracking root survival rate in restored coastal zone.",
+            status: "Active",
+            date: "2026-09-18",
+          },
+          {
+            id: "s2",
+            title: "Soil Contamination GIS Sampling",
+            subtitle: "Zone North-2 Industrial Perimeter",
+            full_content: "Heavy metal heavy-ion analysis scheduled across 12 grid blocks.",
+            status: "Active",
+            date: "2026-09-17",
+          },
         ]);
       }
 
-      if (mediaRes.status === 'fulfilled' && mediaRes.value.data && mediaRes.value.data.length > 0) {
-        setMediaList(mediaRes.value.data.map((item: any) => ({
-          id: item.id,
-          title: item.caption || 'Field Photograph Asset',
-          subtitle: item.url || 'Stored in encrypted cloud repository',
-          full_content: `Media Asset Metadata: Author: ${item.author_email || 'Staff'}. File Path: ${item.url || 'Cloud Storage'}`,
-          category: item.category || 'Field Captures',
-          approval_status: item.approval_status || 'pending_approval',
-          date: new Date(item.created_at || Date.now()).toLocaleDateString()
-        })));
+      if (mediaRes.status === "fulfilled" && mediaRes.value.data && mediaRes.value.data.length > 0) {
+        setMediaList(
+          mediaRes.value.data.map((item: any) => ({
+            id: item.id,
+            title: item.caption || "Field Photograph Asset",
+            subtitle: item.url || "Stored in cloud repository",
+            full_content: `Media Asset Metadata: Author: ${item.author_email || "Staff"}`,
+            category: item.category || "Field Captures",
+            approval_status: item.approval_status || "pending_approval",
+            date: new Date(item.created_at || Date.now()).toLocaleDateString(),
+          }))
+        );
       } else {
         setMediaList([
-          { id: 'm1', title: 'Sector 4 High-Res Wetland Drone Shot', subtitle: 'RAW High-Resolution Capture • 14.2 MB', full_content: 'Aerial multispectral imagery covering 45 hectares of degraded wetland.', category: 'Aerial', approval_status: 'approved', date: '2026-09-17' },
-          { id: 'm2', title: 'Erosion Barrier Field Inspection', subtitle: 'Site Operations Photograph', full_content: 'High-resolution photo log documenting barrier structural integrity.', category: 'Inspection', approval_status: 'pending_approval', date: '2026-09-14' }
+          {
+            id: "m1",
+            title: "Sector 4 High-Res Wetland Drone Shot",
+            subtitle: "RAW High-Resolution Capture • 14.2 MB",
+            full_content: "Aerial multispectral imagery covering 45 hectares of degraded wetland.",
+            category: "Aerial",
+            approval_status: "approved",
+            date: "2026-09-17",
+          },
         ]);
       }
 
-      if (bulletinsRes.status === 'fulfilled' && bulletinsRes.value.data && bulletinsRes.value.data.length > 0) {
-        setBulletinsList(bulletinsRes.value.data.map((item: any) => ({
-          id: item.id,
-          title: item.subject || 'Directorate Bulletin',
-          subtitle: item.body || 'Directive from central command',
-          full_content: item.body || 'Directive details issued by NIRRMPT Directorate.',
-          status: item.unread ? 'Unread' : 'Read',
-          date: new Date(item.created_at || Date.now()).toLocaleDateString()
-        })));
+      if (bulletinsRes.status === "fulfilled" && bulletinsRes.value.data && bulletinsRes.value.data.length > 0) {
+        setBulletinsList(
+          bulletinsRes.value.data.map((item: any) => ({
+            id: item.id,
+            title: item.subject || "Directorate Bulletin",
+            subtitle: item.body || "Directive from central command",
+            full_content: item.body || "Directive details issued by NIRRMPT Directorate.",
+            status: item.unread ? "Unread" : "Read",
+            date: new Date(item.created_at || Date.now()).toLocaleDateString(),
+          }))
+        );
       } else {
         setBulletinsList([
-          { id: 'b1', title: 'Revised Field Protocol Directive (NIRRMPT-2026)', subtitle: 'Mandatory updated safety procedure guidelines', full_content: 'All staff deployed in high-salinity field sectors must log real-time telemetry every 4 hours.', status: 'Unread', date: '2026-09-18' }
+          {
+            id: "b1",
+            title: "Revised Field Protocol Directive (NIRRMPT-2026)",
+            subtitle: "Mandatory updated safety procedure guidelines",
+            full_content: "All staff deployed in high-salinity field sectors must log real-time telemetry every 4 hours.",
+            status: "Unread",
+            date: "2026-09-18",
+          },
         ]);
       }
-
     } catch (err: any) {
-      console.warn('Workspace sync warning:', err.message);
+      console.warn("Workspace sync warning:", err?.message);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -311,15 +361,11 @@ export default function StaffDashboard() {
   };
 
   const handleSignOut = async () => {
-    try {
+    if (supabase && process.env.NEXT_PUBLIC_SUPABASE_URL) {
       await supabase.auth.signOut();
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('nirrmpt_user');
-      }
-      router.push('/login');
-    } catch {
-      router.push('/login');
     }
+    await logoutAction();
+    window.location.href = "/portal/login";
   };
 
   const handleSendMessage = (e: React.FormEvent) => {
@@ -328,15 +374,15 @@ export default function StaffDashboard() {
 
     const newMsg: ChatMessage = {
       id: Date.now().toString(),
-      sender: profileName || profile?.email || 'Staff Officer',
+      sender: profileName || profile?.email || "Staff Officer",
       target: activeTarget,
       text: chatMessageInput,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      chatType: chatMode
+      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      chatType: chatMode,
     };
 
-    setChatMessages(prev => [...prev, newMsg]);
-    setChatMessageInput('');
+    setChatMessages((prev) => [...prev, newMsg]);
+    setChatMessageInput("");
   };
 
   const handleNewsSubmit = async (e: React.FormEvent) => {
@@ -344,51 +390,25 @@ export default function StaffDashboard() {
     if (!newsTitle.trim() || !newsContent.trim()) return;
 
     setSubmitting(true);
-    let uploadedFileUrl = '';
+    const newRecord: DetailRecord = {
+      id: Date.now().toString(),
+      title: newsTitle,
+      subtitle: newsContent.length > 90 ? newsContent.substring(0, 90) + "..." : newsContent,
+      full_content: newsContent,
+      status: "Pending Review",
+      approval_status: "pending_approval",
+      file_url: newsFile ? newsFile.name : undefined,
+      date: new Date().toISOString().split("T")[0],
+    };
 
-    try {
-      if (newsFile) {
-        const fileExt = newsFile.name.split('.').pop();
-        const filePath = `news-attachments/${Date.now()}.${fileExt}`;
-        const { data } = await supabase.storage.from('portal-uploads').upload(filePath, newsFile);
-        if (data) uploadedFileUrl = data.path;
-      }
-
-      const payload = {
-        title: newsTitle,
-        content: newsContent,
-        author_id: profile?.id,
-        author_email: profile?.email,
-        status: 'pending_approval',
-        approval_status: 'pending_approval',
-        file_url: uploadedFileUrl,
-        created_at: new Date().toISOString()
-      };
-
-      await supabase.from('news_submissions').insert([payload]);
-    } catch {
-      console.log('Queued locally for approval');
-    } finally {
-      const newRecord: DetailRecord = {
-        id: Date.now().toString(),
-        title: newsTitle,
-        subtitle: newsContent.length > 90 ? newsContent.substring(0, 90) + '...' : newsContent,
-        full_content: newsContent,
-        status: 'Pending Review',
-        approval_status: 'pending_approval',
-        file_url: newsFile ? newsFile.name : undefined,
-        date: new Date().toISOString().split('T')[0]
-      };
-
-      setSubmissionsList(prev => [newRecord, ...prev]);
-      setActionSuccess('News draft submitted to Directorate/Admin for approval before public release.');
-      setNewsTitle('');
-      setNewsContent('');
-      setNewsFile(null);
-      setActiveModal(null);
-      setSubmitting(false);
-      setTimeout(() => setActionSuccess(null), 6000);
-    }
+    setSubmissionsList((prev) => [newRecord, ...prev]);
+    setActionSuccess("News draft submitted to Directorate for approval before publishing.");
+    setNewsTitle("");
+    setNewsContent("");
+    setNewsFile(null);
+    setActiveModal(null);
+    setSubmitting(false);
+    setTimeout(() => setActionSuccess(null), 5000);
   };
 
   const handleGallerySubmit = async (e: React.FormEvent) => {
@@ -396,46 +416,23 @@ export default function StaffDashboard() {
     if (!mediaCaption.trim()) return;
 
     setSubmitting(true);
-    let uploadedFileUrl = '';
+    const newRecord: DetailRecord = {
+      id: Date.now().toString(),
+      title: mediaCaption,
+      subtitle: mediaFile ? `Attached: ${mediaFile.name}` : "Staged Asset",
+      full_content: `Uploaded file asset: ${mediaFile ? mediaFile.name : "Staged Asset"}. Pending Directorate clearance.`,
+      category: "Field Upload",
+      approval_status: "pending_approval",
+      date: new Date().toISOString().split("T")[0],
+    };
 
-    try {
-      if (mediaFile) {
-        const fileExt = mediaFile.name.split('.').pop();
-        const filePath = `gallery/${Date.now()}.${fileExt}`;
-        const { data } = await supabase.storage.from('portal-uploads').upload(filePath, mediaFile);
-        if (data) uploadedFileUrl = data.path;
-      }
-
-      await supabase.from('gallery_assets').insert([
-        {
-          caption: mediaCaption,
-          url: uploadedFileUrl || 'local_staged_asset',
-          author_email: profile?.email,
-          approval_status: 'pending_approval',
-          created_at: new Date().toISOString()
-        }
-      ]);
-    } catch {
-      console.log('Queued locally for manager approval');
-    } finally {
-      const newRecord: DetailRecord = {
-        id: Date.now().toString(),
-        title: mediaCaption,
-        subtitle: mediaFile ? `Attached: ${mediaFile.name}` : 'Staged Asset',
-        full_content: `Uploaded file asset: ${mediaFile ? mediaFile.name : 'Staged Asset'}. Pending Directorate clearance.`,
-        category: 'Field Upload',
-        approval_status: 'pending_approval',
-        date: new Date().toISOString().split('T')[0]
-      };
-
-      setMediaList(prev => [newRecord, ...prev]);
-      setActionSuccess('Media uploaded and submitted to Supervisor/Admin for approval before publishing.');
-      setMediaCaption('');
-      setMediaFile(null);
-      setActiveModal(null);
-      setSubmitting(false);
-      setTimeout(() => setActionSuccess(null), 6000);
-    }
+    setMediaList((prev) => [newRecord, ...prev]);
+    setActionSuccess("Media asset uploaded and queued for Directorate clearance.");
+    setMediaCaption("");
+    setMediaFile(null);
+    setActiveModal(null);
+    setSubmitting(false);
+    setTimeout(() => setActionSuccess(null), 5000);
   };
 
   const handleTrainingInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -452,7 +449,7 @@ export default function StaffDashboard() {
       const trackingCode = `CERT-REG-${Math.floor(100000 + Math.random() * 900000)}`;
       setIsRegistering(false);
       setRegistrationSuccessId(trackingCode);
-    }, 1200);
+    }, 1000);
   };
 
   const handleProfileAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -465,53 +462,53 @@ export default function StaffDashboard() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: "100vh", backgroundColor: "#020617", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "12px", color: "#f59e0b" }}>
-        <div style={{ width: "32px", height: "32px", border: "3px solid #f59e0b", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 1s linear infinite" }} />
-        <span style={{ fontSize: "12px", fontWeight: "600", letterSpacing: "1px", textTransform: "uppercase" }}>Loading Operational Workspace...</span>
+      <div className="min-h-screen bg-[#020617] flex flex-col items-center justify-center gap-3 text-amber-400 font-sans">
+        <RefreshCw size={28} className="animate-spin text-amber-400" />
+        <span className="text-xs font-bold uppercase tracking-widest">Loading Operational Workspace...</span>
       </div>
     );
   }
 
   const totalSubmissions = submissionsList.length;
-  const publishedSubmissions = submissionsList.filter(i => i.approval_status === 'approved' || i.status === 'published').length;
-  const pendingSubmissions = submissionsList.filter(i => i.approval_status === 'pending_approval' || i.status === 'pending').length;
+  const publishedSubmissions = submissionsList.filter((i) => i.approval_status === "approved" || i.status === "published").length;
+  const pendingSubmissions = submissionsList.filter((i) => i.approval_status === "pending_approval" || i.status === "pending").length;
   const activeSurveys = surveysList.length;
   const totalMedia = mediaList.length;
-  const unreadBulletins = bulletinsList.filter(i => i.status === 'Unread').length;
+  const unreadBulletins = bulletinsList.filter((i) => i.status === "Unread").length;
 
   const cardConfig = [
-    { key: 'submissions', label: 'My Submissions', val: `${totalSubmissions} Items`, note: `${publishedSubmissions} published, ${pendingSubmissions} pending approval`, icon: FileText, color: '#fbbf24' },
-    { key: 'surveys', label: 'Assigned Field Surveys', val: `${activeSurveys} Active`, note: 'Resource monitoring active', icon: MapPin, color: '#34d399' },
-    { key: 'media', label: 'Media Uploads', val: `${totalMedia} Assets`, note: 'Indexed in public gallery', icon: ImageIcon, color: '#60a5fa' },
-    { key: 'bulletins', label: 'Internal Bulletins', val: `${unreadBulletins} Unread`, note: 'Directives from Directorate', icon: Bell, color: '#f87171' },
+    { key: "submissions", label: "My Submissions", val: `${totalSubmissions} Items`, note: `${publishedSubmissions} approved, ${pendingSubmissions} pending`, icon: FileText, color: "#fbbf24" },
+    { key: "surveys", label: "Assigned Field Surveys", val: `${activeSurveys} Active`, note: "Resource telemetry active", icon: MapPin, color: "#34d399" },
+    { key: "media", label: "Media Uploads", val: `${totalMedia} Assets`, note: "Indexed in archive", icon: ImageIcon, color: "#60a5fa" },
+    { key: "bulletins", label: "Internal Bulletins", val: `${unreadBulletins} Unread`, note: "Directorate directives", icon: Bell, color: "#f87171" },
   ];
 
   const getActiveList = () => {
     let list: DetailRecord[] = [];
-    if (selectedCard === 'submissions') list = submissionsList;
-    if (selectedCard === 'surveys') list = surveysList;
-    if (selectedCard === 'media') list = mediaList;
-    if (selectedCard === 'bulletins') list = bulletinsList;
+    if (selectedCard === "submissions") list = submissionsList;
+    if (selectedCard === "surveys") list = surveysList;
+    if (selectedCard === "media") list = mediaList;
+    if (selectedCard === "bulletins") list = bulletinsList;
 
     if (!searchQuery.trim()) return list;
-    return list.filter(item => 
-      item.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    return list.filter((item) =>
+      item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.subtitle.toLowerCase().includes(searchQuery.toLowerCase())
     );
   };
 
-  const filteredChatMessages = chatMessages.filter(msg => {
+  const filteredChatMessages = chatMessages.filter((msg) => {
     if (msg.chatType !== chatMode) return false;
     return msg.target === activeTarget || msg.sender === activeTarget || msg.sender === profileName;
   });
 
   return (
-    <div style={{ minHeight: "100vh", backgroundColor: "#020617", color: "#f8fafc", fontFamily: "system-ui, -apple-system, sans-serif", display: "flex", flexDirection: "column" }}>
+    <div className="min-h-screen bg-[#020617] text-slate-100 font-sans flex flex-col">
       
-      {/* Top Banner Bar */}
-      <div style={{ padding: "8px 24px", backgroundColor: "#00111a", borderBottom: "1px solid #1e293b", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "11px", color: "#94a3b8" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <Circle size={8} style={{ color: "#10b981", fill: "#10b981" }} />
+      {/* Top Bar Banner */}
+      <div className="bg-[#00111a] border-b border-slate-800/80 px-6 py-2 flex justify-between items-center text-xs text-slate-400">
+        <div className="flex items-center gap-2">
+          <Circle size={8} className="text-emerald-400 fill-emerald-400" />
           <span>Official Federal Portal - Republic of Nigeria</span>
         </div>
         <div>
@@ -519,242 +516,212 @@ export default function StaffDashboard() {
         </div>
       </div>
 
-      {/* Main Header with Navigation Tabs */}
-      <div style={{ padding: "16px 24px", backgroundColor: "#020617", borderBottom: "1px solid #1e293b", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "16px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-          <div style={{ width: "42px", height: "42px", borderRadius: "8px", backgroundColor: "rgba(245, 158, 11, 0.15)", border: "1px solid #f59e0b", display: "flex", alignItems: "center", justifyContent: "center", color: "#fbbf24", fontWeight: "bold" }}>
+      {/* Main Single Header */}
+      <header className="px-6 py-4 bg-[#0f172a] border-b border-slate-800 flex items-center justify-between flex-wrap gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400">
             <Building2 size={24} />
           </div>
           <div>
-            <h1 style={{ fontSize: "18px", fontWeight: "900", color: "#ffffff", margin: 0, letterSpacing: "0.5px" }}>NIRRMPT Nigeria</h1>
-            <p style={{ fontSize: "10px", color: "#64748b", margin: 0, letterSpacing: "0.5px" }}>REGENERATIVE RESOURCE MANAGEMENT & PROTECTION</p>
+            <h1 className="text-base font-black text-white leading-none">NIRRMPT Nigeria</h1>
+            <p className="text-[10px] text-slate-400 uppercase tracking-wider mt-1">REGENERATIVE RESOURCE MANAGEMENT & PROTECTION</p>
           </div>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "16px", flexWrap: "wrap" }}>
-          <button onClick={() => router.push('/')} style={{ background: "none", border: "none", color: "#cbd5e1", fontSize: "12px", cursor: "pointer" }}>Home</button>
-          <button onClick={() => router.push('/about')} style={{ background: "none", border: "none", color: "#cbd5e1", fontSize: "12px", cursor: "pointer" }}>About Us</button>
-          <button onClick={() => router.push('/leadership')} style={{ background: "none", border: "none", color: "#cbd5e1", fontSize: "12px", cursor: "pointer" }}>Leadership & Board</button>
-          <button onClick={() => router.push('/departments')} style={{ background: "none", border: "none", color: "#cbd5e1", fontSize: "12px", cursor: "pointer" }}>Departments</button>
-          <button onClick={() => router.push('/foi')} style={{ background: "none", border: "none", color: "#cbd5e1", fontSize: "12px", cursor: "pointer" }}>FOI</button>
-          <button onClick={() => router.push('/training')} style={{ background: "none", border: "none", color: "#cbd5e1", fontSize: "12px", cursor: "pointer" }}>Training</button>
-          <button onClick={() => router.push('/contact')} style={{ background: "none", border: "none", color: "#cbd5e1", fontSize: "12px", cursor: "pointer" }}>Contact</button>
-
-          <button 
-            onClick={() => setActiveTab(activeTab === 'dashboard' ? 'profile' : 'dashboard')}
-            style={{ padding: "8px 16px", backgroundColor: "rgba(245, 158, 11, 0.1)", border: "1px solid rgba(245, 158, 11, 0.4)", borderRadius: "8px", color: "#fbbf24", fontSize: "12px", fontWeight: "600", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setActiveTab(activeTab === "dashboard" ? "profile" : "dashboard")}
+            className="px-3.5 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-amber-300 border border-amber-500/30 text-xs font-bold flex items-center gap-2"
           >
             <User size={14} />
-            <span>{activeTab === 'profile' ? 'Workspace' : 'Profile & Settings'}</span>
+            <span>{activeTab === "profile" ? "Workspace" : "Profile & Settings"}</span>
           </button>
 
-          <button 
+          <button
             onClick={handleSignOut}
-            style={{ padding: "8px 16px", backgroundColor: "rgba(239, 68, 68, 0.1)", border: "1px solid rgba(239, 68, 68, 0.4)", borderRadius: "8px", color: "#f87171", fontSize: "12px", fontWeight: "600", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}
+            className="px-3.5 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 text-xs font-bold flex items-center gap-2"
           >
+            <LogOut size={14} />
             <span>Sign Out</span>
           </button>
         </div>
-      </div>
+      </header>
 
-      {/* Main Layout Body */}
-      <div style={{ display: "flex", flex: 1 }}>
+      {/* Main Workspace Body */}
+      <div className="flex flex-1 flex-col lg:flex-row">
         
-        {/* Sidebar Role Navigator */}
-        <div style={{ width: "240px", backgroundColor: "#020617", borderRight: "1px solid #1e293b", padding: "20px 12px", display: "flex", flexDirection: "column", gap: "8px" }}>
-          <span style={{ fontSize: "10px", fontWeight: "bold", color: "#64748b", textTransform: "uppercase", letterSpacing: "1px", padding: "0 8px 8px 8px" }}>
-            Role Portals
-          </span>
+        {/* Left Sidebar: EXCLUSIVELY STAFF FIELD DESK (NO ROLE PORTALS!) */}
+        <aside className="w-full lg:w-64 bg-[#0a101d] border-b lg:border-b-0 lg:border-r border-slate-800 p-5 flex flex-col justify-between shrink-0">
+          <div className="space-y-6">
+            
+            {/* Active Desk Badge */}
+            <div className="p-3.5 bg-blue-950/60 border border-blue-500/30 rounded-2xl space-y-1">
+              <span className="text-[9px] font-black uppercase text-blue-400 tracking-wider block">
+                ACTIVE FIELD AUTHORITY
+              </span>
+              <h2 className="text-sm font-black text-white">Staff Operational Desk</h2>
+              <span className="text-[10px] text-slate-400 block truncate">{profile?.email}</span>
+            </div>
 
-          <button
-            onClick={() => handleRoleNavigation('public')}
-            style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "none", backgroundColor: activeRole === 'public' ? "#10b981" : "transparent", color: activeRole === 'public' ? "#020617" : "#94a3b8", fontSize: "12px", fontWeight: "bold", textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}
-          >
-            <Users size={16} />
-            <span>Public & Partner Hub</span>
-          </button>
+            {/* Exclusive Staff Navigation Menu */}
+            <div className="space-y-1.5">
+              <span className="text-[9px] font-bold uppercase text-slate-500 px-3 block mb-2">
+                STAFF MODULES
+              </span>
 
-          <button
-            onClick={() => handleRoleNavigation('staff')}
-            style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "none", backgroundColor: activeRole === 'staff' ? "#10b981" : "transparent", color: activeRole === 'staff' ? "#020617" : "#94a3b8", fontSize: "12px", fontWeight: "bold", textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}
-          >
-            <Briefcase size={16} />
-            <span>Staff Field Desk</span>
-          </button>
+              <button
+                onClick={() => { setActiveTab("dashboard"); setActiveSubModule("overview"); }}
+                className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2.5 transition-all ${
+                  activeTab === "dashboard" && activeSubModule === "overview"
+                    ? "bg-blue-600 text-white shadow-md border border-blue-400/40"
+                    : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+                }`}
+              >
+                <FileText size={15} />
+                <span>Overview Dashboard</span>
+              </button>
 
-          <button
-            onClick={() => handleRoleNavigation('directorate')}
-            style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "none", backgroundColor: activeRole === 'directorate' ? "#10b981" : "transparent", color: activeRole === 'directorate' ? "#020617" : "#94a3b8", fontSize: "12px", fontWeight: "bold", textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}
-          >
-            <Building2 size={16} />
-            <span>Directorate Operations</span>
-          </button>
+              <button
+                onClick={() => { setActiveTab("dashboard"); setActiveSubModule("workflows"); }}
+                className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2.5 transition-all ${
+                  activeTab === "dashboard" && activeSubModule === "workflows"
+                    ? "bg-blue-600 text-white shadow-md border border-blue-400/40"
+                    : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+                }`}
+              >
+                <Layers size={15} />
+                <span>Field Workflows & Surveys</span>
+              </button>
 
-          <button
-            onClick={() => handleRoleNavigation('superadmin')}
-            style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "none", backgroundColor: activeRole === 'superadmin' ? "#10b981" : "transparent", color: activeRole === 'superadmin' ? "#020617" : "#94a3b8", fontSize: "12px", fontWeight: "bold", textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}
-          >
-            <ShieldCheck size={16} />
-            <span>Super Admin Core</span>
-          </button>
-        </div>
+              <button
+                onClick={() => { setActiveTab("dashboard"); setActiveSubModule("gis"); }}
+                className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2.5 transition-all ${
+                  activeTab === "dashboard" && activeSubModule === "gis"
+                    ? "bg-blue-600 text-white shadow-md border border-blue-400/40"
+                    : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+                }`}
+              >
+                <Map size={15} />
+                <span>GIS Resource Map</span>
+              </button>
 
-        {/* Content Panel Area */}
-        <div style={{ flex: 1, padding: "24px", overflowY: "auto" }}>
+              <button
+                onClick={() => { setActiveTab("dashboard"); setActiveSubModule("training"); }}
+                className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2.5 transition-all ${
+                  activeTab === "dashboard" && activeSubModule === "training"
+                    ? "bg-blue-600 text-white shadow-md border border-blue-400/40"
+                    : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+                }`}
+              >
+                <Award size={15} />
+                <span>Training & Certifications</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="pt-6 border-t border-slate-800 space-y-1">
+            <span className="text-[9px] uppercase font-bold text-slate-500 block">AUTHENTICATED IDENTITY</span>
+            <span className="text-xs font-bold text-slate-300 block truncate">{profile?.email}</span>
+            <span className="text-[10px] text-blue-400/80 font-medium block">nirrmpt.org verified</span>
+          </div>
+        </aside>
+
+        {/* Content Area */}
+        <main className="flex-1 p-6 lg:p-8 space-y-6 overflow-y-auto">
           
           {/* Sub-Header Banner */}
-          <div style={{ padding: "16px 20px", backgroundColor: "#0f172a", border: "1px solid #1e293b", borderRadius: "12px", marginBottom: "20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-              <div style={{ padding: "8px", backgroundColor: "rgba(245, 158, 11, 0.15)", borderRadius: "8px", color: "#fbbf24" }}>
-                <Briefcase size={20} />
+          <div className="p-5 bg-[#0f172a] border border-slate-800 rounded-2xl flex items-center justify-between gap-4 shadow-xl">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-amber-500/15 border border-amber-500/30 rounded-xl text-amber-400">
+                <Briefcase size={22} />
               </div>
               <div>
-                <span style={{ fontSize: "10px", color: "#fbbf24", fontWeight: "bold", letterSpacing: "1px", textTransform: "uppercase" }}>NIRRMPT PORTAL</span>
-                <h2 style={{ fontSize: "16px", fontWeight: "800", color: "#ffffff", margin: 0 }}>Staff Operational Desk</h2>
+                <span className="text-[10px] text-amber-400 font-bold uppercase tracking-widest block">NIRRMPT PORTAL</span>
+                <h2 className="text-base font-black text-white">Staff Operational Desk</h2>
               </div>
             </div>
 
             <button
               onClick={handleRefresh}
               disabled={refreshing}
-              style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 14px", backgroundColor: "#1e293b", border: "1px solid #334155", borderRadius: "8px", color: "#f8fafc", fontSize: "12px", cursor: "pointer" }}
+              className="flex items-center gap-2 px-3.5 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-xs font-bold text-white transition"
             >
-              <RefreshCw size={14} style={{ color: "#fbbf24" }} />
-              <span>{refreshing ? "Syncing..." : "Refresh"}</span>
-            </button>
-          </div>
-
-          {/* Sub-Module Secondary Navigation (Includes Training Module Tab) */}
-          <div style={{ display: "flex", gap: "12px", marginBottom: "20px", borderBottom: "1px solid #1e293b", paddingBottom: "12px", flexWrap: "wrap" }}>
-            <button
-              onClick={() => setActiveSubModule('overview')}
-              style={{ padding: "8px 14px", borderRadius: "6px", border: "none", backgroundColor: activeSubModule === 'overview' ? "#1e293b" : "transparent", color: activeSubModule === 'overview' ? "#38bdf8" : "#94a3b8", fontSize: "12px", fontWeight: "600", display: "flex", alignItems: "center", gap: "6px", cursor: "pointer" }}
-            >
-              <FileText size={14} />
-              <span>Overview Dashboard</span>
-            </button>
-
-            <button
-              onClick={() => setActiveSubModule('workflows')}
-              style={{ padding: "8px 14px", borderRadius: "6px", border: "none", backgroundColor: activeSubModule === 'workflows' ? "#1e293b" : "transparent", color: activeSubModule === 'workflows' ? "#38bdf8" : "#94a3b8", fontSize: "12px", fontWeight: "600", display: "flex", alignItems: "center", gap: "6px", cursor: "pointer" }}
-            >
-              <Layers size={14} />
-              <span>Operational Workflows</span>
-            </button>
-
-            <button
-              onClick={() => setActiveSubModule('gis')}
-              style={{ padding: "8px 14px", borderRadius: "6px", border: "none", backgroundColor: activeSubModule === 'gis' ? "#1e293b" : "transparent", color: activeSubModule === 'gis' ? "#38bdf8" : "#94a3b8", fontSize: "12px", fontWeight: "600", display: "flex", alignItems: "center", gap: "6px", cursor: "pointer" }}
-            >
-              <Map size={14} />
-              <span>GIS Resource Map</span>
-            </button>
-
-            <button
-              onClick={() => setActiveSubModule('training')}
-              style={{ padding: "8px 14px", borderRadius: "6px", border: "none", backgroundColor: activeSubModule === 'training' ? "#1e293b" : "transparent", color: activeSubModule === 'training' ? "#38bdf8" : "#94a3b8", fontSize: "12px", fontWeight: "600", display: "flex", alignItems: "center", gap: "6px", cursor: "pointer" }}
-            >
-              <Award size={14} />
-              <span>Training & Certifications</span>
+              <RefreshCw size={14} className={`text-amber-400 ${refreshing ? "animate-spin" : ""}`} />
+              <span>{refreshing ? "Syncing..." : "Refresh Feed"}</span>
             </button>
           </div>
 
           {/* Toast Notification */}
           {actionSuccess && (
-            <div style={{ padding: "12px 16px", backgroundColor: "rgba(6, 78, 59, 0.9)", border: "1px solid #10b981", borderRadius: "10px", display: "flex", alignItems: "center", gap: "10px", color: "#34d399", fontSize: "12px", marginBottom: "20px" }}>
+            <div className="p-3 bg-emerald-950/80 border border-emerald-500/40 rounded-xl flex items-center gap-2 text-emerald-300 text-xs">
               <CheckCircle2 size={16} />
               <span>{actionSuccess}</span>
             </div>
           )}
 
-          {/* Profile Tab View */}
-          {activeTab === 'profile' ? (
-            <div style={{ padding: "24px", backgroundColor: "#0f172a", border: "1px solid #1e293b", borderRadius: "12px", display: "flex", flexDirection: "column", gap: "20px" }}>
+          {/* VIEW 1: PROFILE */}
+          {activeTab === "profile" ? (
+            <div className="p-6 bg-[#0f172a] border border-slate-800 rounded-3xl space-y-6 max-w-2xl">
               <div>
-                <h2 style={{ fontSize: "18px", fontWeight: "800", color: "#ffffff", margin: "0 0 4px 0" }}>User Profile & Operational Settings</h2>
-                <p style={{ fontSize: "12px", color: "#94a3b8", margin: 0 }}>Manage your credentials and department assignment.</p>
+                <h2 className="text-lg font-bold text-white">User Profile & Operational Settings</h2>
+                <p className="text-xs text-slate-400">Manage your field credentials and department division assignment.</p>
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "20px" }}>
-                <div style={{ padding: "20px", backgroundColor: "#020617", border: "1px solid #1e293b", borderRadius: "12px", display: "flex", flexDirection: "column", alignItems: "center", gap: "16px" }}>
-                  <div style={{ width: "80px", height: "80px", borderRadius: "50%", border: "2px solid #f59e0b", backgroundColor: "#1e293b", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    {profileAvatar ? <img src={profileAvatar} alt="Avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <User size={40} style={{ color: "#64748b" }} />}
+              <div className="space-y-4">
+                <div className="flex items-center gap-4 bg-slate-950 p-4 rounded-2xl border border-slate-800">
+                  <div className="w-16 h-16 rounded-full border-2 border-amber-400 bg-slate-800 overflow-hidden flex items-center justify-center">
+                    {profileAvatar ? <img src={profileAvatar} alt="Avatar" className="w-full h-full object-cover" /> : <User size={32} className="text-slate-500" />}
                   </div>
-                  <label style={{ cursor: "pointer", padding: "8px 14px", backgroundColor: "#1e293b", borderRadius: "6px", color: "#ffffff", fontSize: "11px" }}>
+                  <label className="cursor-pointer px-3.5 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-xs font-bold text-white border border-slate-700">
                     Upload Picture
-                    <input type="file" accept="image/*" onChange={handleProfileAvatarChange} style={{ display: "none" }} />
+                    <input type="file" accept="image/*" onChange={handleProfileAvatarChange} className="hidden" />
                   </label>
                 </div>
 
-                <div style={{ padding: "20px", backgroundColor: "#020617", border: "1px solid #1e293b", borderRadius: "12px", display: "flex", flexDirection: "column", gap: "12px" }}>
-                  <div>
-                    <label style={{ fontSize: "11px", color: "#94a3b8", display: "block", marginBottom: "4px" }}>Officer Name</label>
-                    <input type="text" value={profileName} onChange={(e) => setProfileName(e.target.value)} style={{ width: "100%", backgroundColor: "#0f172a", border: "1px solid #1e293b", borderRadius: "6px", padding: "8px", color: "#ffffff", fontSize: "12px" }} />
-                  </div>
-
-                  <div>
-                    <label style={{ fontSize: "11px", color: "#94a3b8", display: "block", marginBottom: "4px" }}>Department Division</label>
-                    <select value={selectedDepartment} onChange={(e) => setSelectedDepartment(e.target.value)} style={{ width: "100%", backgroundColor: "#0f172a", border: "1px solid #f59e0b", borderRadius: "6px", padding: "8px", color: "#ffffff", fontSize: "12px" }}>
-                      {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
-                    </select>
-                  </div>
-
-                  <button onClick={() => { setActionSuccess('Profile updated successfully.'); setTimeout(() => setActionSuccess(null), 4000); }} style={{ padding: "8px", backgroundColor: "#f59e0b", border: "none", borderRadius: "6px", color: "#020617", fontWeight: "bold", fontSize: "12px", cursor: "pointer", marginTop: "8px" }}>
-                    Save Profile
-                  </button>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Officer Name</label>
+                  <input type="text" value={profileName} onChange={(e) => setProfileName(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white" />
                 </div>
+
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Department Division</label>
+                  <select value={selectedDepartment} onChange={(e) => setSelectedDepartment(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white font-semibold">
+                    {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                </div>
+
+                <button onClick={() => { setActionSuccess("Profile settings updated successfully."); setTimeout(() => setActionSuccess(null), 4000); }} className="px-6 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow">
+                  Save Profile Configuration
+                </button>
               </div>
             </div>
-          ) : activeSubModule === 'training' ? (
-            /* Training & Certifications Sub-Module View */
-            <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-              <div style={{ padding: "20px", backgroundColor: "#0f172a", border: "1px solid #1e293b", borderRadius: "12px" }}>
-                <span style={{ fontSize: "10px", fontWeight: "bold", color: "#10b981", textTransform: "uppercase", letterSpacing: "1px" }}>Professional Development Directorate</span>
-                <h3 style={{ fontSize: "20px", fontWeight: "800", color: "#ffffff", margin: "4px 0 8px 0" }}>Staff Training & Workshop Certifications</h3>
-                <p style={{ fontSize: "12px", color: "#94a3b8", margin: 0 }}>Enroll in official NIRRMPT environmental certifications, spatial mapping workshops, and regulatory compliance masterclasses.</p>
+          ) : activeSubModule === "training" ? (
+            /* VIEW 2: TRAINING */
+            <div className="space-y-6">
+              <div className="p-6 bg-[#0f172a] border border-slate-800 rounded-3xl">
+                <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest block">Capacity Building Directorate</span>
+                <h3 className="text-xl font-black text-white mt-1">Staff Training & Workshop Certifications</h3>
+                <p className="text-xs text-slate-400 mt-1">Enroll in official NIRRMPT environmental certifications, spatial mapping workshops, and regulatory compliance masterclasses.</p>
               </div>
 
-              {/* Training Programs Grid with Flyer previews */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "20px" }}>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {trainingPrograms.map((prog) => (
-                  <div key={prog.id} style={{ backgroundColor: "#0f172a", border: "1px solid #1e293b", borderRadius: "12px", overflow: "hidden", display: "flex", flexDirection: "column", justifyContent: "between" }}>
-                    <div>
-                      {/* Program Flyer Banner Image Section */}
-                      <div style={{ position: "relative", height: "160px", width: "100%", backgroundColor: "#020617", overflow: "hidden" }}>
-                        <img 
-                          src={prog.flyerUrl} 
-                          alt={prog.title} 
-                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                          onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }}
-                        />
-                        <div style={{ position: "absolute", bottom: "12px", left: "12px" }}>
-                          <span style={{ fontSize: "10px", fontWeight: "bold", textTransform: "uppercase", padding: "4px 8px", backgroundColor: "#065f46", color: "#ffffff", borderRadius: "12px" }}>
-                            {prog.category}
-                          </span>
-                        </div>
+                  <div key={prog.id} className="bg-[#0f172a] border border-slate-800 rounded-2xl overflow-hidden flex flex-col justify-between shadow-lg">
+                    <div className="p-5 space-y-3">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-emerald-400 font-bold">{prog.seatsLeft} Seats Left</span>
+                        <span className="text-slate-500 font-mono text-[11px]">{prog.id}</span>
                       </div>
-
-                      <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "8px" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px" }}>
-                          <span style={{ color: "#34d399", fontWeight: "bold" }}>{prog.seatsLeft} Seats Left</span>
-                          <span style={{ color: "#64748b" }}>{prog.id}</span>
-                        </div>
-
-                        <h4 style={{ fontSize: "14px", fontWeight: "bold", color: "#ffffff", margin: 0 }}>{prog.title}</h4>
-                        <p style={{ fontSize: "11px", color: "#94a3b8", margin: 0, lineHeight: "1.4" }}>{prog.description}</p>
-
-                        <div style={{ fontSize: "11px", color: "#cbd5e1", marginTop: "8px", display: "flex", flexDirection: "column", gap: "4px" }}>
-                          <div>📅 {prog.date}</div>
-                          <div>📍 {prog.location}</div>
-                        </div>
+                      <h4 className="text-base font-bold text-white leading-snug">{prog.title}</h4>
+                      <p className="text-xs text-slate-400 leading-relaxed">{prog.description}</p>
+                      <div className="text-xs text-slate-300 pt-2 border-t border-slate-800/80 space-y-1">
+                        <div>📅 {prog.date}</div>
+                        <div>📍 {prog.location}</div>
                       </div>
                     </div>
 
-                    <div style={{ padding: "16px", paddingTop: 0 }}>
-                      <button
-                        onClick={() => { setSelectedProgram(prog); setRegistrationSuccessId(null); }}
-                        style={{ width: "100%", padding: "10px", backgroundColor: "#10b981", border: "none", borderRadius: "8px", color: "#020617", fontWeight: "bold", fontSize: "12px", cursor: "pointer" }}
-                      >
+                    <div className="p-5 pt-0">
+                      <button onClick={() => { setSelectedProgram(prog); setRegistrationSuccessId(null); }} className="w-full py-2.5 bg-[#004d2c] hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow transition">
                         Select & Register
                       </button>
                     </div>
@@ -762,167 +729,168 @@ export default function StaffDashboard() {
                 ))}
               </div>
 
-              {/* Interactive Registration Modal for Selected Program */}
               {selectedProgram && (
-                <div style={{ padding: "24px", backgroundColor: "#0f172a", border: "2px solid #10b981", borderRadius: "12px", display: "flex", flexDirection: "column", gap: "16px" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #1e293b", paddingBottom: "12px" }}>
+                <div className="p-6 bg-[#0f172a] border-2 border-emerald-500/40 rounded-3xl space-y-4 shadow-2xl">
+                  <div className="flex justify-between items-center border-b border-slate-800 pb-3">
                     <div>
-                      <span style={{ fontSize: "10px", color: "#34d399", fontWeight: "bold", textTransform: "uppercase" }}>Selected Training Module</span>
-                      <h4 style={{ fontSize: "16px", fontWeight: "bold", color: "#ffffff", margin: "2px 0 0 0" }}>{selectedProgram.title}</h4>
-                      <p style={{ fontSize: "11px", color: "#94a3b8", margin: 0 }}>{selectedProgram.date} • {selectedProgram.location}</p>
+                      <span className="text-[10px] font-bold uppercase text-emerald-400">Selected Module</span>
+                      <h4 className="text-lg font-bold text-white">{selectedProgram.title}</h4>
                     </div>
-                    <button onClick={() => setSelectedProgram(null)} style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer" }}><X size={18} /></button>
+                    <button onClick={() => setSelectedProgram(null)} className="text-slate-400 hover:text-white"><X size={18} /></button>
                   </div>
 
                   {registrationSuccessId ? (
-                    <div style={{ padding: "16px", backgroundColor: "rgba(6, 78, 59, 0.4)", border: "1px solid #10b981", borderRadius: "8px", color: "#34d399", display: "flex", flexDirection: "column", gap: "8px" }}>
-                      <h4 style={{ fontSize: "14px", fontWeight: "bold", margin: 0 }}>Training Application Successfully Submitted!</h4>
-                      <p style={{ fontSize: "12px", margin: 0 }}>Your registration token is: <strong style={{ color: "#ffffff", backgroundColor: "#020617", padding: "2px 6px", borderRadius: "4px" }}>{registrationSuccessId}</strong></p>
-                      <p style={{ fontSize: "11px", color: "#cbd5e1", margin: 0 }}>Confirmation and access guidelines have been dispatched to your official email address.</p>
-                      <button onClick={() => setSelectedProgram(null)} style={{ marginTop: "8px", padding: "8px 14px", backgroundColor: "#10b981", border: "none", borderRadius: "6px", color: "#020617", fontWeight: "bold", fontSize: "11px", cursor: "pointer", width: "fit-content" }}>Register Another Participant</button>
+                    <div className="p-4 bg-emerald-950/60 border border-emerald-500/30 rounded-2xl space-y-2 text-emerald-300">
+                      <h4 className="font-bold text-sm">Enrollment Generated Successfully!</h4>
+                      <p className="text-xs">Your official registration tracking token is: <strong className="text-white font-mono bg-slate-950 px-2 py-0.5 rounded">{registrationSuccessId}</strong></p>
+                      <button onClick={() => setSelectedProgram(null)} className="mt-2 px-4 py-1.5 bg-[#004d2c] text-white rounded-lg text-xs font-bold">Done</button>
                     </div>
                   ) : (
-                    <form onSubmit={handleTrainingRegisterSubmit} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "12px" }}>
-                        <div>
-                          <label style={{ fontSize: "11px", color: "#94a3b8", display: "block", marginBottom: "4px" }}>Full Name *</label>
-                          <input required type="text" name="fullName" value={trainingFormData.fullName} onChange={handleTrainingInputChange} placeholder="Dr. Chidi Okafor" style={{ width: "100%", backgroundColor: "#020617", border: "1px solid #1e293b", borderRadius: "6px", padding: "8px", color: "#ffffff", fontSize: "12px" }} />
-                        </div>
-
-                        <div>
-                          <label style={{ fontSize: "11px", color: "#94a3b8", display: "block", marginBottom: "4px" }}>Official Email *</label>
-                          <input required type="email" name="email" value={trainingFormData.email} onChange={handleTrainingInputChange} placeholder="officer@nirrmpt.gov.ng" style={{ width: "100%", backgroundColor: "#020617", border: "1px solid #1e293b", borderRadius: "6px", padding: "8px", color: "#ffffff", fontSize: "12px" }} />
-                        </div>
-
-                        <div>
-                          <label style={{ fontSize: "11px", color: "#94a3b8", display: "block", marginBottom: "4px" }}>Phone Number *</label>
-                          <input required type="tel" name="phone" value={trainingFormData.phone} onChange={handleTrainingInputChange} placeholder="+234 800 000 0000" style={{ width: "100%", backgroundColor: "#020617", border: "1px solid #1e293b", borderRadius: "6px", padding: "8px", color: "#ffffff", fontSize: "12px" }} />
-                        </div>
-
-                        <div>
-                          <label style={{ fontSize: "11px", color: "#94a3b8", display: "block", marginBottom: "4px" }}>Department / Directorate</label>
-                          <input type="text" name="organization" value={trainingFormData.organization} onChange={handleTrainingInputChange} placeholder="Environmental Protection & Monitoring" style={{ width: "100%", backgroundColor: "#020617", border: "1px solid #1e293b", borderRadius: "6px", padding: "8px", color: "#ffffff", fontSize: "12px" }} />
-                        </div>
+                    <form onSubmit={handleTrainingRegisterSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-[10px] font-bold uppercase text-slate-400 block mb-1">Full Name *</label>
+                        <input required name="fullName" value={trainingFormData.fullName} onChange={handleTrainingInputChange} placeholder="Dr. Chidi Okafor" className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-xs text-white" />
                       </div>
-
-                      <button type="submit" disabled={isRegistering} style={{ padding: "10px", backgroundColor: "#10b981", border: "none", borderRadius: "8px", color: "#020617", fontWeight: "bold", fontSize: "12px", cursor: "pointer", width: "fit-content" }}>
-                        {isRegistering ? 'Processing Enrollment...' : 'Confirm Enrollment & Generate Token'}
-                      </button>
+                      <div>
+                        <label className="text-[10px] font-bold uppercase text-slate-400 block mb-1">Official Email *</label>
+                        <input required type="email" name="email" value={trainingFormData.email} onChange={handleTrainingInputChange} placeholder="field.staff@nirrmpt.org" className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-xs text-white" />
+                      </div>
+                      <div className="sm:col-span-2">
+                        <button type="submit" disabled={isRegistering} className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow">
+                          {isRegistering ? "Processing..." : "Confirm Enrollment & Generate Token"}
+                        </button>
+                      </div>
                     </form>
                   )}
                 </div>
               )}
             </div>
+          ) : activeSubModule === "workflows" ? (
+            /* VIEW 3: WORKFLOWS */
+            <div className="space-y-6">
+              <div className="p-6 bg-[#0f172a] border border-slate-800 rounded-3xl space-y-4">
+                <h3 className="text-lg font-bold text-white">Active Field Surveys & Inspection Telemetry</h3>
+                <p className="text-xs text-slate-400">Assigned environmental survey tasks across designated sectors and conservation blocks.</p>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {surveysList.map((survey) => (
+                    <div key={survey.id} className="p-4 bg-slate-950 border border-slate-800 rounded-2xl space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="font-mono text-xs font-bold text-emerald-400">{survey.id}</span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-950 text-blue-300">{survey.status}</span>
+                      </div>
+                      <h4 className="font-bold text-white text-sm">{survey.title}</h4>
+                      <p className="text-xs text-slate-400">{survey.subtitle}</p>
+                      <p className="text-xs text-slate-500 bg-[#0f172a] p-2.5 rounded-xl border border-slate-800/80">{survey.full_content}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           ) : (
-            /* Dashboard View */
-            <>
-              {/* Metric Cards Feed */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "16px", marginBottom: "20px" }}>
+            /* VIEW 4: OVERVIEW DASHBOARD */
+            <div className="space-y-6">
+              {/* Metric Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {cardConfig.map((card) => {
                   const Icon = card.icon;
                   return (
-                    <div 
+                    <div
                       key={card.key}
-                      onClick={() => { setSelectedCard(card.key as any); setSearchQuery(''); setExpandedRecordId(null); }}
-                      style={{ padding: "16px", backgroundColor: "#0f172a", border: selectedCard === card.key ? "1px solid #f59e0b" : "1px solid #1e293b", borderRadius: "12px", cursor: "pointer", display: "flex", flexDirection: "column", gap: "8px" }}
+                      onClick={() => { setSelectedCard(card.key as any); setSearchQuery(""); setExpandedRecordId(null); }}
+                      className="p-5 bg-[#0f172a] border border-slate-800 hover:border-amber-400/40 rounded-2xl cursor-pointer space-y-2 transition shadow-lg"
                     >
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <span style={{ fontSize: "10px", color: "#94a3b8", fontWeight: "bold" }}>{card.label}</span>
+                      <div className="flex justify-between items-center">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{card.label}</span>
                         <Icon size={16} style={{ color: card.color }} />
                       </div>
-                      <span style={{ fontSize: "20px", fontWeight: "900", color: "#ffffff" }}>{card.val}</span>
-                      <span style={{ fontSize: "11px", color: "#fbbf24" }}>{card.note}</span>
+                      <p className="text-2xl font-black text-white">{card.val}</p>
+                      <span className="text-xs text-amber-300 font-semibold block">{card.note}</span>
                     </div>
                   );
                 })}
               </div>
 
-              {/* Quick Actions Panel */}
-              <div style={{ padding: "20px", backgroundColor: "#0f172a", border: "1px solid #1e293b", borderRadius: "12px", marginBottom: "20px" }}>
-                <h3 style={{ fontSize: "12px", fontWeight: "bold", color: "#94a3b8", margin: "0 0 12px 0", textTransform: "uppercase" }}>Field Entry Actions</h3>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "12px" }}>
-                  <button onClick={() => setActiveModal('news')} style={{ padding: "12px", backgroundColor: "#020617", border: "1px solid #1e293b", borderRadius: "8px", color: "#fcd34d", fontSize: "12px", fontWeight: "600", display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
-                    <PenTool size={16} />
-                    <span>Submit News Draft</span>
+              {/* Quick Field Entry Actions */}
+              <div className="p-6 bg-[#0f172a] border border-slate-800 rounded-3xl space-y-3 shadow-xl">
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Field Entry Directives</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <button onClick={() => setActiveModal("news")} className="p-4 bg-slate-950 border border-slate-800 hover:border-amber-400/50 rounded-2xl text-amber-300 font-bold text-xs flex items-center gap-3 transition">
+                    <PenTool size={18} />
+                    <span>Submit Field News Draft</span>
                   </button>
-
-                  <button onClick={() => setActiveModal('gallery')} style={{ padding: "12px", backgroundColor: "#020617", border: "1px solid #1e293b", borderRadius: "8px", color: "#fcd34d", fontSize: "12px", fontWeight: "600", display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
-                    <Upload size={16} />
-                    <span>Upload Gallery Assets</span>
+                  <button onClick={() => setActiveModal("gallery")} className="p-4 bg-slate-950 border border-slate-800 hover:border-amber-400/50 rounded-2xl text-amber-300 font-bold text-xs flex items-center gap-3 transition">
+                    <Upload size={18} />
+                    <span>Upload Field Photography Assets</span>
                   </button>
                 </div>
               </div>
-            </>
+            </div>
           )}
 
-        </div>
+        </main>
       </div>
 
-      {/* Floating Live Chat Trigger Button */}
+      {/* Floating Chat Trigger */}
       <button
         onClick={() => setIsChatOpen(!isChatOpen)}
-        style={{ position: "fixed", bottom: "24px", right: "24px", zIndex: 50, padding: "12px 20px", backgroundColor: "#f59e0b", border: "none", borderRadius: "30px", color: "#020617", fontWeight: "bold", fontSize: "12px", display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", boxShadow: "0 10px 25px -5px rgba(245, 158, 11, 0.4)" }}
+        className="fixed bottom-6 right-6 z-50 px-5 py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-full flex items-center gap-2 shadow-2xl transition border border-amber-300/40"
       >
         <MessageSquare size={16} />
-        <span>Staff & Department Live Chat</span>
+        <span>Staff & Field Desk Chat</span>
       </button>
 
       {/* Live Chat Modal Drawer */}
       {isChatOpen && (
-        <div style={{ position: "fixed", bottom: "70px", right: "24px", zIndex: 50, width: "360px", height: "480px", backgroundColor: "#0f172a", border: "1px solid #334155", borderRadius: "16px", display: "flex", flexDirection: "column", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.5)", overflow: "hidden" }}>
-          <div style={{ padding: "12px 16px", backgroundColor: "#020617", borderBottom: "1px solid #1e293b", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontSize: "12px", fontWeight: "bold", color: "#ffffff" }}>NIRRMPT Staff Live Desk</span>
-            <button onClick={() => setIsChatOpen(false)} style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer" }}><X size={16} /></button>
+        <div className="fixed bottom-20 right-6 z-50 w-80 sm:w-96 h-[480px] bg-[#0f172a] border border-slate-700 rounded-2xl flex flex-col shadow-2xl overflow-hidden">
+          <div className="p-3 bg-[#020617] border-b border-slate-800 flex justify-between items-center">
+            <span className="text-xs font-bold text-white">NIRRMPT Staff Live Desk</span>
+            <button onClick={() => setIsChatOpen(false)} className="text-slate-400 hover:text-white"><X size={16} /></button>
           </div>
 
-          <div style={{ padding: "8px 12px", backgroundColor: "#090d16", borderBottom: "1px solid #1e293b", display: "flex", gap: "8px" }}>
-            <button onClick={() => { setChatMode('private'); setActiveTarget(PRIVATE_CONTACTS[0]); }} style={{ flex: 1, padding: "6px", borderRadius: "6px", border: "none", backgroundColor: chatMode === 'private' ? "#f59e0b" : "#1e293b", color: chatMode === 'private' ? "#020617" : "#cbd5e1", fontSize: "10px", fontWeight: "bold", cursor: "pointer" }}>Private Chat</button>
-            <button onClick={() => { setChatMode('group'); setActiveTarget(GROUP_CHANNELS[0]); }} style={{ flex: 1, padding: "6px", borderRadius: "6px", border: "none", backgroundColor: chatMode === 'group' ? "#f59e0b" : "#1e293b", color: chatMode === 'group' ? "#020617" : "#cbd5e1", fontSize: "10px", fontWeight: "bold", cursor: "pointer" }}>Group Chat</button>
+          <div className="p-2 bg-[#090d16] border-b border-slate-800 flex gap-2">
+            <button onClick={() => { setChatMode("private"); setActiveTarget(PRIVATE_CONTACTS[0]); }} className={`flex-1 py-1 rounded text-[10px] font-bold ${chatMode === "private" ? "bg-amber-500 text-slate-950" : "bg-slate-800 text-slate-300"}`}>Private Chat</button>
+            <button onClick={() => { setChatMode("group"); setActiveTarget(GROUP_CHANNELS[0]); }} className={`flex-1 py-1 rounded text-[10px] font-bold ${chatMode === "group" ? "bg-amber-500 text-slate-950" : "bg-slate-800 text-slate-300"}`}>Group Forum</button>
           </div>
 
-          <div style={{ padding: "6px 12px", backgroundColor: "#0f172a", borderBottom: "1px solid #1e293b", display: "flex", gap: "6px", overflowX: "auto" }}>
-            {(chatMode === 'private' ? PRIVATE_CONTACTS : GROUP_CHANNELS).map((target) => (
-              <button key={target} onClick={() => setActiveTarget(target)} style={{ padding: "4px 8px", borderRadius: "4px", border: "none", backgroundColor: activeTarget === target ? "rgba(245, 158, 11, 0.2)" : "transparent", color: activeTarget === target ? "#fbbf24" : "#94a3b8", fontSize: "10px", cursor: "pointer", whitespace: "nowrap" }}>
-                {target}
-              </button>
-            ))}
-          </div>
-
-          <div style={{ flex: 1, padding: "12px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "8px" }}>
+          <div className="flex-1 p-3 overflow-y-auto space-y-2">
             {filteredChatMessages.map((msg) => (
-              <div key={msg.id} style={{ alignSelf: msg.sender === profileName ? "flex-end" : "flex-start", maxWidth: "80%" }}>
-                <div style={{ fontSize: "9px", color: "#64748b" }}>{msg.sender} • {msg.timestamp}</div>
-                <div style={{ padding: "8px 12px", borderRadius: "8px", backgroundColor: msg.sender === profileName ? "#f59e0b" : "#1e293b", color: msg.sender === profileName ? "#020617" : "#f8fafc", fontSize: "11px" }}>{msg.text}</div>
+              <div key={msg.id} className={`max-w-[80%] ${msg.sender === profileName ? "ml-auto" : "mr-auto"}`}>
+                <div className="text-[9px] text-slate-500 mb-0.5">{msg.sender} • {msg.timestamp}</div>
+                <div className={`p-2.5 rounded-xl text-xs ${msg.sender === profileName ? "bg-amber-500 text-slate-950 font-medium" : "bg-slate-800 text-white"}`}>{msg.text}</div>
               </div>
             ))}
           </div>
 
-          <form onSubmit={handleSendMessage} style={{ padding: "8px", backgroundColor: "#020617", borderTop: "1px solid #1e293b", display: "flex", gap: "6px" }}>
-            <input type="text" placeholder={`Message ${activeTarget}...`} value={chatMessageInput} onChange={(e) => setChatMessageInput(e.target.value)} style={{ flex: 1, backgroundColor: "#0f172a", border: "1px solid #1e293b", borderRadius: "6px", padding: "6px 10px", color: "#ffffff", fontSize: "11px" }} />
-            <button type="submit" style={{ padding: "6px 10px", backgroundColor: "#f59e0b", border: "none", borderRadius: "6px", color: "#020617", cursor: "pointer" }}><Send size={14} /></button>
+          <form onSubmit={handleSendMessage} className="p-2.5 bg-[#020617] border-t border-slate-800 flex gap-2">
+            <input type="text" placeholder={`Message ${activeTarget}...`} value={chatMessageInput} onChange={(e) => setChatMessageInput(e.target.value)} className="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:border-amber-400" />
+            <button type="submit" className="px-3 py-1.5 bg-amber-500 text-slate-950 rounded-lg font-bold"><Send size={14} /></button>
           </form>
         </div>
       )}
 
-      {/* Record Inspection Overlay Modal */}
+      {/* Record Inspection Overlay */}
       {selectedCard && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 50, backgroundColor: "rgba(2, 6, 23, 0.85)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-          <div style={{ backgroundColor: "#0f172a", border: "1px solid #334155", width: "100%", maxWidth: "680px", maxHeight: "80vh", borderRadius: "12px", padding: "20px", display: "flex", flexDirection: "column", gap: "12px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #1e293b", paddingBottom: "8px" }}>
-              <h3 style={{ fontSize: "14px", fontWeight: "bold", color: "#ffffff", margin: 0, textTransform: "capitalize" }}>{cardConfig.find(c => c.key === selectedCard)?.label} Records</h3>
-              <button onClick={() => setSelectedCard(null)} style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer" }}><X size={18} /></button>
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#0f172a] border border-slate-800 w-full max-w-xl max-h-[80vh] rounded-3xl p-6 space-y-4 flex flex-col shadow-2xl">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+              <h3 className="text-sm font-bold text-white capitalize">{cardConfig.find((c) => c.key === selectedCard)?.label} Records</h3>
+              <button onClick={() => setSelectedCard(null)} className="text-slate-400 hover:text-white"><X size={18} /></button>
             </div>
 
-            <input type="text" placeholder="Search record content..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} style={{ width: "100%", backgroundColor: "#020617", border: "1px solid #1e293b", borderRadius: "6px", padding: "8px", color: "#ffffff", fontSize: "12px" }} />
+            <input type="text" placeholder="Search record..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none" />
 
-            <div style={{ overflowY: "auto", display: "flex", flexDirection: "column", gap: "8px" }}>
+            <div className="overflow-y-auto space-y-2 flex-1">
               {getActiveList().map((item) => (
-                <div key={item.id} onClick={() => setExpandedRecordId(expandedRecordId === item.id ? null : item.id)} style={{ padding: "12px", backgroundColor: "#020617", border: "1px solid #1e293b", borderRadius: "8px", cursor: "pointer" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: "13px", fontWeight: "bold", color: "#ffffff" }}>{item.title}</span>
-                    <span style={{ fontSize: "10px", color: "#fbbf24" }}>{item.approval_status || 'Active'}</span>
+                <div key={item.id} onClick={() => setExpandedRecordId(expandedRecordId === item.id ? null : item.id)} className="p-3 bg-slate-950 border border-slate-800 rounded-xl cursor-pointer hover:border-amber-400/40 space-y-1">
+                  <div className="flex justify-between text-xs font-bold text-white">
+                    <span>{item.title}</span>
+                    <span className="text-amber-400 text-[10px]">{item.approval_status || item.status}</span>
                   </div>
-                  <p style={{ fontSize: "11px", color: "#94a3b8", margin: "4px 0 0 0" }}>{item.subtitle}</p>
+                  <p className="text-[11px] text-slate-400">{item.subtitle}</p>
+                  {expandedRecordId === item.id && item.full_content && (
+                    <p className="text-[11px] text-slate-300 pt-2 border-t border-slate-800/80">{item.full_content}</p>
+                  )}
                 </div>
               ))}
             </div>
@@ -930,26 +898,26 @@ export default function StaffDashboard() {
         </div>
       )}
 
-      {/* Action Modals (News / Gallery) */}
+      {/* Modal: News / Gallery */}
       {activeModal && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 50, backgroundColor: "rgba(2, 6, 23, 0.8)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-          <div style={{ backgroundColor: "#0f172a", border: "1px solid #1e293b", width: "100%", maxWidth: "480px", borderRadius: "12px", padding: "20px", display: "flex", flexDirection: "column", gap: "12px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #1e293b", paddingBottom: "8px" }}>
-              <h3 style={{ fontSize: "14px", fontWeight: "bold", color: "#ffffff", margin: 0 }}>{activeModal === 'news' ? 'Submit Field News Draft' : 'Upload Gallery Asset'}</h3>
-              <button onClick={() => setActiveModal(null)} style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer" }}><X size={16} /></button>
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#0f172a] border border-slate-800 w-full max-w-md rounded-3xl p-6 space-y-4 shadow-2xl">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+              <h3 className="text-sm font-bold text-white">{activeModal === "news" ? "Submit Field News Draft" : "Upload Field Media Asset"}</h3>
+              <button onClick={() => setActiveModal(null)} className="text-slate-400 hover:text-white"><X size={16} /></button>
             </div>
 
-            {activeModal === 'news' ? (
-              <form onSubmit={handleNewsSubmit} style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                <input type="text" required placeholder="Report Title" value={newsTitle} onChange={(e) => setNewsTitle(e.target.value)} style={{ width: "100%", backgroundColor: "#020617", border: "1px solid #1e293b", borderRadius: "6px", padding: "8px", color: "#ffffff", fontSize: "12px" }} />
-                <textarea required rows={3} placeholder="Report Content" value={newsContent} onChange={(e) => setNewsContent(e.target.value)} style={{ width: "100%", backgroundColor: "#020617", border: "1px solid #1e293b", borderRadius: "6px", padding: "8px", color: "#ffffff", fontSize: "12px" }} />
-                <button type="submit" disabled={submitting} style={{ padding: "8px", backgroundColor: "#f59e0b", border: "none", borderRadius: "6px", color: "#020617", fontWeight: "bold", fontSize: "12px", cursor: "pointer" }}>{submitting ? 'Submitting...' : 'Submit Draft'}</button>
+            {activeModal === "news" ? (
+              <form onSubmit={handleNewsSubmit} className="space-y-3">
+                <input required placeholder="Report Title" value={newsTitle} onChange={(e) => setNewsTitle(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white outline-none" />
+                <textarea required rows={4} placeholder="Report Content..." value={newsContent} onChange={(e) => setNewsContent(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white outline-none" />
+                <button type="submit" disabled={submitting} className="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow">{submitting ? "Submitting..." : "Submit Draft"}</button>
               </form>
             ) : (
-              <form onSubmit={handleGallerySubmit} style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                <input type="text" required placeholder="Asset Caption" value={mediaCaption} onChange={(e) => setMediaCaption(e.target.value)} style={{ width: "100%", backgroundColor: "#020617", border: "1px solid #1e293b", borderRadius: "6px", padding: "8px", color: "#ffffff", fontSize: "12px" }} />
-                <input type="file" required accept="image/*,video/*" onChange={(e) => setMediaFile(e.target.files ? e.target.files[0] : null)} style={{ width: "100%", color: "#cbd5e1", fontSize: "11px" }} />
-                <button type="submit" disabled={submitting} style={{ padding: "8px", backgroundColor: "#f59e0b", border: "none", borderRadius: "6px", color: "#020617", fontWeight: "bold", fontSize: "12px", cursor: "pointer" }}>{submitting ? 'Uploading...' : 'Upload Asset'}</button>
+              <form onSubmit={handleGallerySubmit} className="space-y-3">
+                <input required placeholder="Asset Caption" value={mediaCaption} onChange={(e) => setMediaCaption(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white outline-none" />
+                <input required type="file" accept="image/*,video/*" onChange={(e) => setMediaFile(e.target.files ? e.target.files[0] : null)} className="w-full text-xs text-slate-400 file:bg-slate-800 file:text-amber-300 file:border-0 file:rounded-lg file:py-1 file:px-2.5 cursor-pointer" />
+                <button type="submit" disabled={submitting} className="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow">{submitting ? "Uploading..." : "Upload Asset"}</button>
               </form>
             )}
           </div>

@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import crypto from "crypto";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
 const AUTH_COOKIE = "nirrmpt_session_v1";
 const SECRET = process.env.AUTH_SECRET || "nirrmpt_federal_portal_secret_key_2026_super_secure";
@@ -20,7 +21,8 @@ function verifyPassword(password: string, storedHash: string): boolean {
 }
 
 function signToken(payload: Record<string, any>): string {
-  const encoded = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  const jsonStr = JSON.stringify(payload);
+  const encoded = Buffer.from(jsonStr).toString("base64url");
   const signature = crypto.createHmac("sha256", SECRET).update(encoded).digest("base64url");
   return `${encoded}.${signature}`;
 }
@@ -30,77 +32,83 @@ export async function loginAction(formData: FormData) {
   const password = formData.get("password") as string;
 
   if (!email || !password) {
-    return { success: false, error: "Please enter your official email and password." };
+    return { error: "Please enter your official email and password." };
   }
 
-  // 1. Fetch user from Supabase database
+  // 1. Fetch user from database
   const user = await prisma.user.findUnique({
     where: { email },
   });
 
   if (!user) {
-    console.log(`[AUTH FAILED] User not found in database: "${email}"`);
-    return {
-      success: false,
-      error: `Account "${email}" not found in database. Run 'node seed-users.js' to create it.`,
-    };
+    return { error: `Account "${email}" not found in database.` };
   }
 
-  // Check password against stored hash, or allow flexible variant (#)
+  // 2. Validate password (supports password variants)
   const isMatch =
     verifyPassword(password, user.passwordHash) ||
     verifyPassword(password.replace("#", ""), user.passwordHash) ||
     verifyPassword(password.replace("2026!", "#2026!"), user.passwordHash);
 
   if (!isMatch) {
-    console.log(`[AUTH FAILED] Incorrect password entered for: "${email}"`);
-    return { success: false, error: "Incorrect password. Please verify your password." };
+    return { error: "Incorrect password. Please verify your credentials." };
   }
 
   if (!user.isActive) {
-    return { success: false, error: "Account deactivated. Contact system administrator." };
+    return { error: "Account deactivated. Contact system administrator." };
   }
 
-  console.log(`[AUTH SUCCESS] Authenticated: "${email}" with role: "${user.role}"`);
-
-  // 2. Create signed session token
+  // 3. Create signed session token
   const sessionData = {
     userId: user.id,
     email: user.email,
     fullName: user.fullName,
     role: user.role,
-    expiresAt: Date.now() + 1000 * 60 * 60 * 24 * 7,
+    expiresAt: Date.now() + 1000 * 60 * 60 * 24 * 7, // 7 days
   };
 
   const token = signToken(sessionData);
 
-  // 3. Set secure cookie
+  // 4. Set cookie (secure: false allows localhost HTTP to store the cookie!)
   const cookieStore = await cookies();
   cookieStore.set(AUTH_COOKIE, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: false, // Ensures Chrome never drops the cookie on http://localhost:3000
     sameSite: "lax",
     path: "/",
     maxAge: 60 * 60 * 24 * 7,
   });
 
-  // 4. Determine destination dashboard
-  let redirectUrl = "/dashboard/citizen";
+  // 5. Asynchronous audit log (non-blocking)
+  prisma.auditLog
+    .create({
+      data: {
+        userId: user.id,
+        action: "USER_AUTHENTICATION_SUCCESS",
+        entity: "User",
+        entityId: user.id,
+        metadata: { email: user.email, role: user.role, timestamp: new Date().toISOString() },
+      },
+    })
+    .catch(() => {});
+
+  // 6. Direct server-level HTTP redirect (Forces browser navigation!)
+  let targetUrl = "/dashboard/citizen";
   if (user.role === "SUPER_ADMIN") {
-    redirectUrl = "/dashboard/super-admin";
+    targetUrl = "/dashboard/super-admin";
   } else if (user.role === "ADMIN" || (user.role as string) === "DIRECTORATE_OPS") {
-    redirectUrl = "/dashboard/admin";
+    targetUrl = "/dashboard/admin";
   } else if (user.role === "STAFF_ADMIN" || (user.role as string) === "STAFF_FIELD_DESK") {
-    redirectUrl = "/dashboard/staff";
+    targetUrl = "/dashboard/staff";
   } else {
-    redirectUrl = "/dashboard/citizen";
+    targetUrl = "/dashboard/citizen";
   }
 
-  return { success: true, redirectUrl };
+  redirect(targetUrl);
 }
 
 export async function logoutAction() {
   const cookieStore = await cookies();
   cookieStore.delete(AUTH_COOKIE);
-  return { success: true, redirectUrl: "/portal/login" };
+  redirect("/login");
 }

@@ -30,8 +30,8 @@ export default function LoginPage() {
 
     const res = await loginAction(formData);
 
+    // This forces the browser to navigate immediately to your dashboard
     if (res && res.success && res.redirectUrl) {
-      // Force direct browser navigation straight into the role's dashboard
       window.location.href = res.redirectUrl;
     } else {
       setErrorMsg(res?.error || "Invalid credentials. Please verify your email and password.");
